@@ -1,13 +1,6 @@
 from .. import core
 import cv2
-import os
 import numpy as np
-
-
-class System(core.Action):
-
-    def __init__(self, *args):
-        super().__init__(lambda *_: os.system(*args))
 
 
 class VideoWriter(core.Action):
@@ -34,7 +27,8 @@ class VideoWriter(core.Action):
 
         if self.writer is None:
             shape = tuple(reversed(frame.shape[:2]))
-            self.writer = cv2.VideoWriter(self.output_path, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), self.fps, shape)
+            fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+            self.writer = cv2.VideoWriter(self.output_path, fourcc, self.fps, shape)
 
         self.writer.write(frame.astype(np.uint8))
 
