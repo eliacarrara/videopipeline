@@ -1,11 +1,13 @@
-#!/usr/bin/env python
-
 """
 """
 
 from __future__ import annotations
-import graphviz
+
 import random
+import typing
+
+import graphviz
+import numpy as np
 
 
 class AbortPipeline(Exception):
@@ -14,17 +16,17 @@ class AbortPipeline(Exception):
 
 class AbstractNode:
 
-    def __init__(self, process_fn, **kwargs):
+    def __init__(self, process_fn: typing.Callable, **kwargs):
         assert callable(process_fn)
-        self.previous = []
-
+        self.previous: list[AbstractNode] = []
         self.process_fn = process_fn
+        self.cache = None
+
+        self.name: str = str(kwargs["name"]) if "name" in kwargs else None
         self.verbose: bool = bool(kwargs["verbose"]) if "verbose" in kwargs else False
-        self.debug_verbose: bool = bool(kwargs["debug_verbose"]) if "debug_verbose" in kwargs else False  # TODO use
+        self.debug_verbose: bool = bool(kwargs["debug_verbose"]) if "debug_verbose" in kwargs else False
         self.aggregate: bool = bool(kwargs["aggregate"]) if "aggregate" in kwargs else False
         self.collect: bool = bool(kwargs["collect"]) if "collect" in kwargs else True
-        
-        self.cache = None
 
     def __call__(self, *args):
         is_modelling = self.is_modelling(*args)
@@ -60,9 +62,10 @@ class AbstractNode:
         else:
             assert False
 
-    def __getitem__(self, n):
+    def __getitem__(self, n: int) -> AbstractNode:
         # TODO return n-th element of output tuple, only applicable for multiple outputs
-        pass
+        assert isinstance(n, int)
+        return AbstractNode(lambda *args: args[0][n], name=f"ArgSelector{n}")(self)
 
     def infer(self):
         assert isinstance(self.previous, list)
@@ -75,13 +78,23 @@ class AbstractNode:
         # Infer previous nodes
         previous_output = [prev.infer() for prev in self.previous]
 
+        if self.debug_verbose:
+            size = previous_output.shape if isinstance(previous_output, np.ndarray) else ''
+            print(f'Input: {type(previous_output)}{size}')
+
         # Infer current node
         if len(self.previous) == 0:
             self.cache = self.process_fn()
         elif len(self.previous) == 1:
             self.cache = self.process_fn(previous_output[0])
         elif len(self.previous) > 1:
-            self.cache = self.process_fn(previous_output)
+            self.cache = self.process_fn(*previous_output)
+        else:
+            assert False
+
+        if self.debug_verbose:
+            size = self.cache.shape if isinstance(self.cache, np.ndarray) else ''
+            print(f'Output: {type(self.cache)}{size}')
 
         return self.cache
 
@@ -90,7 +103,7 @@ class AbstractNode:
             p.clear_cache()
         self.cache = None
 
-    def model(self, node):
+    def model(self, node: AbstractNode) -> AbstractNode:
         assert self.is_modelling(node)
 
         if isinstance(node, list):
@@ -118,7 +131,7 @@ class AbstractNode:
         pass
 
     @staticmethod
-    def is_modelling(*args):
+    def is_modelling(*args) -> bool:
         if len(args) != 1:
             return False
 
@@ -138,11 +151,9 @@ class Generator(Function):
 
     def __init__(self, generator_fn, **kwargs):
         super().__init__(self.generate, **kwargs)
-        self.generator_fn = generator_fn
-        self.generator = None
+        self.generator = generator_fn()
 
-    def generate(self, *args):
-        self.generator = self.generator_fn(*args) if self.generator is None else self.generator
+    def generate(self):
         return next(self.generator)
 
 
@@ -154,11 +165,7 @@ class Action(Function):
 
     def action(self, *args):
         self.action_fn(*args)
-        assert len(args) > 0
-        if len(args) == 1:
-            return args[0]
-        else:
-            return args
+        return args[0] if len(args) == 1 else args
 
 
 class Filter(Action):
@@ -174,16 +181,18 @@ class Filter(Action):
 
 class Pipeline(Function):
 
-    def __init__(self, end_node, **kwargs):
+    def __init__(self, end_node: AbstractNode | list[AbstractNode], **kwargs):
         super().__init__(self.pipeline, **kwargs)
         if isinstance(end_node, list):
+            assert all(isinstance(n, AbstractNode) for n in end_node)
             assert len(end_node[0].previous) == 0
+
             for i in range(len(end_node) - 1):
                 end_node[i + 1](end_node[i])
 
-            self.end_node = end_node[-1]
+            self.end_node: AbstractNode = end_node[-1]
         elif isinstance(end_node, AbstractNode):
-            self.end_node = end_node
+            self.end_node: AbstractNode = end_node
         else:
             assert False
 
@@ -194,14 +203,20 @@ class Pipeline(Function):
         return ret
 
     def render_model(self):
-        def rnd_hex():
-            return ''.join([random.choice(hex_chars) for _ in range(5)])
+        def get_name(n):
+            def rnd_hex():
+                hex_chars = [c for c in "ABCDEF0123456789"]
+                return ''.join([random.choice(hex_chars) for _ in range(5)])
 
-        dot = graphviz.Digraph('pipeline-graph', format='png')
-        tree = self.traverse_dfs(self.end_node)
-        hex_chars = [c for c in "ABCDEF0123456789"]
-        tr = {node: node.__class__.__name__ + "-" + rnd_hex() for node in tree.keys()}
-        for node, previous in tree.items():
+            return (n.__class__.__name__ if n.name is None else n.name) + "-" + rnd_hex()
+
+        dot = graphviz.Digraph('pipeline' if self.name is None else self.name, format='png')
+
+        graph = self.traverse_dfs(self.end_node)
+
+        tr = {n: get_name(n) for n in graph.keys()}
+
+        for node, previous in self.traverse_dfs(self.end_node).items():
             name = tr[node]
             dot.node(name)
 
@@ -213,7 +228,7 @@ class Pipeline(Function):
         return dot
 
     @staticmethod
-    def traverse_dfs(node):
+    def traverse_dfs(node: AbstractNode) -> dict[AbstractNode, list[AbstractNode]]:
         nodes = {}
         stack = [node]
 

@@ -1,6 +1,7 @@
-from .. import core
 import cv2
 import numpy as np
+
+from videopipeline import core
 
 
 class VideoWriter(core.Action):

@@ -1,6 +1,7 @@
-from .. import core
 import cv2
 import numpy as np
+
+from videopipeline import core
 
 
 def crop(frame, position, size):
@@ -22,6 +23,21 @@ def greyscale_to_rgb(frame):
     return np.dstack([frame, frame, frame])
 
 
+def filter_largest_contour(contours):
+    if len(contours) == 0:
+        return None
+    else:
+        return max(contours, key=lambda c: cv2.contourArea(c))
+
+
+def get_contour_center(contour):
+    if contour is None:
+        return tuple()
+    else:
+        mom = cv2.moments(contour)
+        return int(mom["m10"] / mom["m00"]), int(mom["m01"] / mom["m00"])
+
+
 def draw_arrows(frame, motion_vectors):
     for mv in motion_vectors:
         start_pt = (mv[3], mv[4])
@@ -31,17 +47,12 @@ def draw_arrows(frame, motion_vectors):
     return frame
 
 
-def draw_contour_centers(frame, contours):
-    if len(contours) == 0:
-        return frame, tuple()
-
-    biggest = max(contours, key=lambda c: cv2.contourArea(c))  # TODO move to another function
-    radius = 10
-    mom = cv2.moments(biggest)
-    center = int(mom["m10"] / mom["m00"]), int(mom["m01"] / mom["m00"])
-    cv2.circle(frame, center, radius, (255, 0, 255), 3)
-
-    return frame, center
+def draw_contour_centers(frame, center):
+    if center is None:
+        return frame
+    else:
+        # TODO cv2.circle(frame, center, 10, (255, 0, 255), -1)
+        return frame
 
 
 def draw_line(frame, start_pos, end_pos, color):
@@ -80,43 +91,46 @@ def find_contours(frame):
 
 
 class Crop(core.Function):
-
     def __init__(self, position, window, **kwargs):
         super().__init__(lambda frame: crop(frame, position, window), **kwargs)
 
 
 class Smooth(core.Function):
-
     def __init__(self, window, **kwargs):
         super().__init__(lambda frame: smooth(frame, window), **kwargs)
 
 
 class Rgb2Greyscale(core.Function):
-
     def __init__(self, **kwargs):
-        super().__init__(lambda frame: rgb_to_greyscale(frame), **kwargs)
+        super().__init__(rgb_to_greyscale, **kwargs)
 
 
 class Greyscale2Rgb(core.Function):
-
     def __init__(self, **kwargs):
-        super().__init__(lambda frame: greyscale_to_rgb(frame), **kwargs)
+        super().__init__(greyscale_to_rgb, **kwargs)
+
+
+class FilterLargestContour(core.Function):
+    def __init__(self, **kwargs):
+        super().__init__(filter_largest_contour, **kwargs)
+
+
+class GetContourCenter(core.Function):
+    def __init__(self, **kwargs):
+        super().__init__(get_contour_center, **kwargs)
 
 
 class DrawArrows(core.Function):
-
     def __init__(self, **kwargs):
         super().__init__(draw_arrows, **kwargs)
 
 
 class DrawContourCenters(core.Function):
-
     def __init__(self, **kwargs):
         super().__init__(draw_contour_centers, **kwargs)
 
 
 class DrawMovementPath(core.Function):
-
     def __init__(self, window=5, color_coeff=3, **kwargs):
         super().__init__(self.draw_movement_path, **kwargs)
         self.last_center = None
@@ -157,37 +171,31 @@ class DrawMovementPath(core.Function):
 
 
 class Threshold(core.Function):
-
     def __init__(self, t, **kwargs):
         super().__init__(lambda frame: threshold(frame, t), **kwargs)
 
 
 class Erode(core.Function):
-
     def __init__(self, window):
         super().__init__(lambda frame: erode(frame, window))
 
 
 class Dilate(core.Function):
-
     def __init__(self, window):
         super().__init__(lambda frame: dilate(frame, window))
 
 
 class CannyEdge(core.Function):
-
     def __init__(self, t1, t2, **kwargs):
         super().__init__(lambda *args: canny_edge(args[0], t1, t2), **kwargs)
 
 
 class FindContours(core.Function):
-
     def __init__(self, **kwargs):
         super().__init__(lambda frame: find_contours(frame), **kwargs)
 
 
 class TemporalSmooth(core.Function):
-
     def __init__(self, **kwargs):
         super().__init__(self.temp_smooth, **kwargs)
         self.last_frame = None
@@ -199,7 +207,6 @@ class TemporalSmooth(core.Function):
 
 
 class AbsDiff(core.Function):
-
     def __init__(self, **kwargs):
         super().__init__(self.abs_diff, **kwargs)
         self.last_frame = None
