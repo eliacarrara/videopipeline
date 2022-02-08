@@ -1,3 +1,7 @@
+"""
+
+"""
+
 import cv2
 
 from videopipeline import core
@@ -13,9 +17,14 @@ def read_video_file(filepath):
     assert cap.isOpened(), filepath
 
     while cap.grab():
-        yield cap.retrieve()[1]
+        yield cap.retrieve()[1]  # BGR-format
 
     cap.release()
+
+
+def constant_generator(c):
+    while True:
+        yield c
 
 
 class Flatten(core.Generator):
@@ -25,4 +34,9 @@ class Flatten(core.Generator):
 
 class ReadVideoFile(core.Generator):
     def __init__(self, filepath, **kwargs):
-        super().__init__(lambda *args: read_video_file(filepath), **kwargs)
+        super().__init__(lambda: read_video_file(filepath), **kwargs)
+
+
+class Constant(core.Generator):
+    def __init__(self, c, **kwargs):
+        super().__init__(lambda: constant_generator(c), **kwargs)

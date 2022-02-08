@@ -1,10 +1,19 @@
-"""
+r"""
+ __      ___     _                  _            _ _
+ \ \    / (_)   | |                (_)          | (_)
+  \ \  / / _  __| | ___  ___  _ __  _ _ __   ___| |_ _ __   ___
+   \ \/ / | |/ _` |/ _ \/ _ \| '_ \| | '_ \ / _ \ | | '_ \ / _ \
+    \  /  | | (_| |  __/ (_) | |_) | | |_) |  __/ | | | | |  __/
+     \/   |_|\__,_|\___|\___/| .__/|_| .__/ \___|_|_|_| |_|\___|
+                             | |     | |
+                             |_|     |_|
 """
 
 from __future__ import annotations
 
 import random
 import typing
+import time
 
 import graphviz
 import numpy as np
@@ -15,18 +24,20 @@ class AbortPipeline(Exception):
 
 
 class AbstractNode:
-
-    def __init__(self, process_fn: typing.Callable, **kwargs):
+    def __init__(self, process_fn: typing.Callable, name: str = "", verbose: bool = False, debug_verbose: bool = False,
+                 aggregate: bool = False, collect: bool = True, timeit: bool = False):
         assert callable(process_fn)
-        self.previous: list[AbstractNode] = []
+        self.previous: typing.List[AbstractNode] = []
         self.process_fn = process_fn
-        self.cache = None
+        self.cache_data = None
+        self.time_data = []
 
-        self.name: str = str(kwargs["name"]) if "name" in kwargs else None
-        self.verbose: bool = bool(kwargs["verbose"]) if "verbose" in kwargs else False
-        self.debug_verbose: bool = bool(kwargs["debug_verbose"]) if "debug_verbose" in kwargs else False
-        self.aggregate: bool = bool(kwargs["aggregate"]) if "aggregate" in kwargs else False
-        self.collect: bool = bool(kwargs["collect"]) if "collect" in kwargs else True
+        self.name: str = name
+        self.verbose: bool = bool(verbose)
+        self.debug_verbose: bool = bool(debug_verbose)
+        self.aggregate: bool = bool(aggregate)
+        self.collect: bool = bool(collect)
+        self.timeit: bool = bool(timeit)
 
     def __call__(self, *args):
         is_modelling = self.is_modelling(*args)
@@ -39,7 +50,7 @@ class AbstractNode:
 
         elif not is_modelling and self.aggregate:  # infer until generator exhausts
             collection, iteration, run = [], 0, True
-            
+
             while run:
                 try:
                     if self.verbose:
@@ -47,9 +58,9 @@ class AbstractNode:
 
                     output = self.infer()
                     self.clear_cache()
-                    
+
                     if self.collect:
-                        collection.append(output)                    
+                        collection.append(output)
                 except AbortPipeline:
                     self.clear_cache()
                 except StopIteration:
@@ -63,17 +74,16 @@ class AbstractNode:
             assert False
 
     def __getitem__(self, n: int) -> AbstractNode:
-        # TODO return n-th element of output tuple, only applicable for multiple outputs
         assert isinstance(n, int)
-        return AbstractNode(lambda *args: args[0][n], name=f"ArgSelector{n}")(self)
+        return AbstractNode(lambda *args: args[0][n], name=f"ArgSelect{n}")(self)
 
     def infer(self):
         assert isinstance(self.previous, list)
         assert all(isinstance(p, AbstractNode) for p in self.previous)
 
         # Return cached result if available
-        if self.cache is not None:
-            return self.cache
+        if self.cache_data is not None:
+            return self.cache_data
 
         # Infer previous nodes
         previous_output = [prev.infer() for prev in self.previous]
@@ -82,26 +92,27 @@ class AbstractNode:
             size = previous_output.shape if isinstance(previous_output, np.ndarray) else ''
             print(f'Input: {type(previous_output)}{size}')
 
+        t0 = None
+        if self.timeit:
+            t0 = time.perf_counter_ns()
+
         # Infer current node
-        if len(self.previous) == 0:
-            self.cache = self.process_fn()
-        elif len(self.previous) == 1:
-            self.cache = self.process_fn(previous_output[0])
-        elif len(self.previous) > 1:
-            self.cache = self.process_fn(*previous_output)
-        else:
-            assert False
+        self.cache_data = self.process_fn(*previous_output)
+
+        if self.timeit:
+            t1 = time.perf_counter()
+            self.time_data.append(t1 - t0)
 
         if self.debug_verbose:
-            size = self.cache.shape if isinstance(self.cache, np.ndarray) else ''
-            print(f'Output: {type(self.cache)}{size}')
+            size = self.cache_data.shape if isinstance(self.cache_data, np.ndarray) else ''
+            print(f'Output: {type(self.cache_data)}{size}')
 
-        return self.cache
+        return self.cache_data
 
     def clear_cache(self):
         for p in self.previous:
             p.clear_cache()
-        self.cache = None
+        self.cache_data = None
 
     def model(self, node: AbstractNode) -> AbstractNode:
         assert self.is_modelling(node)
@@ -142,14 +153,12 @@ class AbstractNode:
 
 
 class Function(AbstractNode):
-
     def __init__(self, process_fn, **kwargs):
         super().__init__(process_fn, **kwargs)
 
 
 class Generator(Function):
-
-    def __init__(self, generator_fn, **kwargs):
+    def __init__(self, generator_fn: typing.Callable[[], typing.Generator], **kwargs):
         super().__init__(self.generate, **kwargs)
         self.generator = generator_fn()
 
@@ -158,8 +167,7 @@ class Generator(Function):
 
 
 class Action(Function):
-
-    def __init__(self, action_fn, **kwargs):
+    def __init__(self, action_fn: typing.Callable, **kwargs):
         super().__init__(self.action, **kwargs)
         self.action_fn = action_fn
 
@@ -169,8 +177,7 @@ class Action(Function):
 
 
 class Filter(Action):
-
-    def __init__(self, filter_fn, **kwargs):
+    def __init__(self, filter_fn: typing.Callable[..., bool], **kwargs):
         super().__init__(self.filter, **kwargs)
         self.filter_fn = filter_fn
 
@@ -180,8 +187,7 @@ class Filter(Action):
 
 
 class Pipeline(Function):
-
-    def __init__(self, end_node: AbstractNode | list[AbstractNode], **kwargs):
+    def __init__(self, end_node: AbstractNode | typing.List[AbstractNode], **kwargs):
         super().__init__(self.pipeline, **kwargs)
         if isinstance(end_node, list):
             assert all(isinstance(n, AbstractNode) for n in end_node)
@@ -208,12 +214,11 @@ class Pipeline(Function):
                 hex_chars = [c for c in "ABCDEF0123456789"]
                 return ''.join([random.choice(hex_chars) for _ in range(5)])
 
-            return (n.__class__.__name__ if n.name is None else n.name) + "-" + rnd_hex()
+            return (n.__class__.__name__ if n.name == "" else n.name) + "-" + rnd_hex()
 
-        dot = graphviz.Digraph('pipeline' if self.name is None else self.name, format='png')
+        dot = graphviz.Digraph('pipeline' if self.name == "" else self.name, format='png')
 
         graph = self.traverse_dfs(self.end_node)
-
         tr = {n: get_name(n) for n in graph.keys()}
 
         for node, previous in self.traverse_dfs(self.end_node).items():
@@ -228,7 +233,7 @@ class Pipeline(Function):
         return dot
 
     @staticmethod
-    def traverse_dfs(node: AbstractNode) -> dict[AbstractNode, list[AbstractNode]]:
+    def traverse_dfs(node: AbstractNode) -> typing.Dict[AbstractNode, typing.List[AbstractNode]]:
         nodes = {}
         stack = [node]
 

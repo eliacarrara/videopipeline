@@ -1,3 +1,8 @@
+"""
+
+"""
+import typing
+
 import cv2
 import numpy as np
 
@@ -5,25 +10,34 @@ from videopipeline import core
 
 
 def crop(frame, position, size):
+    assert isinstance(frame, np.ndarray)
+    assert isinstance(position, tuple) and len(position) == 2 and all(isinstance(p, int) for p in position)
+    assert isinstance(size, tuple) and len(size) == 2 and all(isinstance(s, int) for s in size)
+
     return frame[position[0]:position[0]+size[0], position[1]:position[1]+size[1]]
 
 
 def smooth(frame, window):
+    assert isinstance(frame, np.ndarray)
+    assert isinstance(window, int)
+
     out_frame = np.zeros_like(frame)
     cv2.GaussianBlur(frame, (window, window), 0, out_frame, 0, cv2.BORDER_CONSTANT)
     return out_frame
 
 
-def rgb_to_greyscale(frame):  # TODO rgb or brg?
-    # mono = 0.2125 * r + 0.7154 * g + 0.0721 * b
-    return np.array(0.2125 * frame[:, :, 0] + 0.7154 * frame[:, :, 1] + 0.0721 * frame[:, :, 2])
+def rgb_to_greyscale(frame):
+    assert isinstance(frame, np.ndarray)
+    return np.array(0.0721 * frame[:, :, 0] + 0.7154 * frame[:, :, 1] + 0.2125 * frame[:, :, 2])  # BRG
 
 
 def greyscale_to_rgb(frame):
+    assert isinstance(frame, np.ndarray)
     return np.dstack([frame, frame, frame])
 
 
 def filter_largest_contour(contours):
+    assert isinstance(contours, tuple), type(contours)
     if len(contours) == 0:
         return None
     else:
@@ -38,65 +52,107 @@ def get_contour_center(contour):
         return int(mom["m10"] / mom["m00"]), int(mom["m01"] / mom["m00"])
 
 
-def draw_arrows(frame, motion_vectors):
-    for mv in motion_vectors:
-        start_pt = (mv[3], mv[4])
-        end_pt = (mv[5], mv[6])
-        cv2.arrowedLine(frame, start_pt, end_pt, (0, 0, 255), 1, cv2.LINE_AA, 0, 0.1)
-
-    return frame
-
-
 def draw_contour_centers(frame, center):
-    if center is None:
+    assert isinstance(frame, np.ndarray)
+    # TODO argument check
+
+    if center is tuple():
         return frame
     else:
-        # TODO cv2.circle(frame, center, 10, (255, 0, 255), -1)
-        return frame
+        out_frame = np.array(frame)
+        cv2.circle(out_frame, center, 10, (255, 0, 255), -1)
+
+        return out_frame
 
 
-def draw_line(frame, start_pos, end_pos, color):
-    cv2.line(frame, (start_pos[1], start_pos[0]), (end_pos[1], end_pos[0]), color, 3)
-    return frame
+def draw_line(frame, start_pos, end_pos, color, thickness=3):
+    assert isinstance(frame, np.ndarray)
+    # TODO argument check
 
+    out_frame = np.array(frame)
+    cv2.line(out_frame, (start_pos[0], start_pos[1]), (end_pos[0], end_pos[1]), color, thickness)
 
-def threshold(frame, t):
-    cv2.threshold(frame, t, frame.max(), cv2.THRESH_BINARY, frame)
-    return frame
-
-
-def erode(frame, window):
-    kernel = np.ones((window, window), 'uint8')
-    out_frame = np.zeros_like(frame)
-    cv2.erode(frame, kernel, out_frame)
     return out_frame
 
 
-def dilate(frame, window):
-    kernel = np.ones((window, window), 'uint8')
+def threshold(frame, t):
+    assert isinstance(frame, np.ndarray)
+    assert isinstance(t, int)
+
+    out_frame = np.zeros_like(frame)
+    cv2.threshold(frame, t, frame.max(initial=0), cv2.THRESH_BINARY, out_frame)
+
+    return out_frame
+
+
+def erode(frame, kernel):
+    assert isinstance(frame, np.ndarray)
+    assert isinstance(kernel, np.ndarray)
+
+    out_frame = np.zeros_like(frame)
+    cv2.erode(frame, kernel, out_frame)
+
+    return out_frame
+
+
+def dilate(frame, kernel):
+    assert isinstance(frame, np.ndarray)
+    assert isinstance(kernel, np.ndarray)
+
     out_frame = np.zeros_like(frame)
     cv2.dilate(frame, kernel, out_frame)
+
     return out_frame
 
 
 def canny_edge(frame, t1, t2):
-    out_frame = np.zeros(frame.shape, dtype=np.uint8)
-    edges = cv2.Canny(frame.astype(np.uint8), t1, t2 * 2, out_frame)
-    return np.asarray(edges[:, :])
+    assert isinstance(frame, np.ndarray)
+    assert isinstance(t1, int)
+    assert isinstance(t2, int)
+
+    in_frame = frame.astype(np.uint8)
+    out_frame = np.zeros_like(in_frame)
+    cv2.Canny(in_frame, t1, t2, out_frame)
+
+    return out_frame
 
 
 def find_contours(frame):
+    assert isinstance(frame, np.ndarray)
+
     contours, _ = cv2.findContours(frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    return frame, contours
+
+    return contours
+
+
+def stack(rows, cols, *images):
+    assert isinstance(rows, int)
+    assert isinstance(cols, int)
+    assert all(isinstance(i, np.ndarray) for i in images)
+    assert len(images) <= rows * cols, len(images)
+
+    ref = images[0].shape
+    out_image = np.zeros((ref[0] * rows, ref[1] * cols, 3))
+
+    # TODO somethings not right here
+    for i in range(rows):
+        for j in range(cols):
+            idx = i * rows + j
+            if idx < len(images):
+                img = images[idx]
+                sub_img = img if img.ndim == 3 else np.dstack([img, img, img])
+                out_image[i * ref[0]: (i+1) * ref[0], j * ref[1]: (j+1) * ref[1]] = sub_img
+
+    return out_image
 
 
 class Crop(core.Function):
-    def __init__(self, position, window, **kwargs):
-        super().__init__(lambda frame: crop(frame, position, window), **kwargs)
+    def __init__(self, position: typing.Tuple[int, int], size: typing.Tuple[int, int], **kwargs):
+        super().__init__(lambda frame: crop(frame, position, size), **kwargs)
 
 
 class Smooth(core.Function):
-    def __init__(self, window, **kwargs):
+    def __init__(self, window: int, **kwargs):
         super().__init__(lambda frame: smooth(frame, window), **kwargs)
 
 
@@ -120,26 +176,20 @@ class GetContourCenter(core.Function):
         super().__init__(get_contour_center, **kwargs)
 
 
-class DrawArrows(core.Function):
-    def __init__(self, **kwargs):
-        super().__init__(draw_arrows, **kwargs)
-
-
 class DrawContourCenters(core.Function):
     def __init__(self, **kwargs):
         super().__init__(draw_contour_centers, **kwargs)
 
 
 class DrawMovementPath(core.Function):
-    def __init__(self, window=5, color_coeff=3, **kwargs):
+    def __init__(self, window: int = 5, color_coeff: int = 3, **kwargs):
         super().__init__(self.draw_movement_path, **kwargs)
         self.last_center = None
         self.lines = []
         self.window = window
         self.color_coeff = color_coeff
 
-    def draw_movement_path(self, data):
-        frame, center = data
+    def draw_movement_path(self, frame, center):
         frame = greyscale_to_rgb(frame)
         if center == tuple():
             self.last_center = None
@@ -153,57 +203,39 @@ class DrawMovementPath(core.Function):
             last_centers = np.array([line[0] for line in self.lines])
             centers = np.array([line[1] for line in self.lines])
 
-            ones_window = np.ones(self.window)
-            mean_lc_y = np.convolve(last_centers[:, 0], ones_window, 'valid') / self.window
-            mean_lc_x = np.convolve(last_centers[:, 1], ones_window, 'valid') / self.window
-            mean_lc = np.vstack([mean_lc_y, mean_lc_x]).T.astype(int)
-
-            mean_c_y = np.convolve(centers[:, 0], ones_window, 'valid') / self.window
-            mean_c_x = np.convolve(centers[:, 1], ones_window, 'valid') / self.window
-            mean_c = np.vstack([mean_c_y, mean_c_x]).T.astype(int)
-
-            for lc, c in zip(mean_lc, mean_c):
+            for lc, c in zip(last_centers, centers):
                 b = int(min(abs(c[0] - lc[0]) * self.color_coeff, 255))
                 g = int(min(abs(c[1] - lc[1]) * self.color_coeff, 255))
                 frame = draw_line(frame, lc, c, (b, g, 0))
 
-        return frame, center
+        return frame
 
 
 class Threshold(core.Function):
-    def __init__(self, t, **kwargs):
+    def __init__(self, t: int, **kwargs):
         super().__init__(lambda frame: threshold(frame, t), **kwargs)
 
 
 class Erode(core.Function):
-    def __init__(self, window):
-        super().__init__(lambda frame: erode(frame, window))
+    def __init__(self, window: int, **kwargs):
+        kernel = np.ones((window, window), 'uint8')
+        super().__init__(lambda frame: erode(frame, kernel), **kwargs)
 
 
 class Dilate(core.Function):
-    def __init__(self, window):
-        super().__init__(lambda frame: dilate(frame, window))
+    def __init__(self, window: int, **kwargs):
+        kernel = np.ones((window, window), 'uint8')
+        super().__init__(lambda frame: dilate(frame, kernel), **kwargs)
 
 
 class CannyEdge(core.Function):
-    def __init__(self, t1, t2, **kwargs):
-        super().__init__(lambda *args: canny_edge(args[0], t1, t2), **kwargs)
+    def __init__(self, t1: int, t2: int, **kwargs):
+        super().__init__(lambda frame: canny_edge(frame, t1, t2), **kwargs)
 
 
 class FindContours(core.Function):
     def __init__(self, **kwargs):
         super().__init__(lambda frame: find_contours(frame), **kwargs)
-
-
-class TemporalSmooth(core.Function):
-    def __init__(self, **kwargs):
-        super().__init__(self.temp_smooth, **kwargs)
-        self.last_frame = None
-
-    def temp_smooth(self, frame):
-        diff = frame if self.last_frame is None else np.array([frame, self.last_frame]).mean(axis=0)
-        self.last_frame = frame
-        return diff
 
 
 class AbsDiff(core.Function):
@@ -215,3 +247,30 @@ class AbsDiff(core.Function):
         diff = cv2.absdiff(frame, frame) if self.last_frame is None else cv2.absdiff(frame, self.last_frame)
         self.last_frame = frame
         return diff
+
+
+class Stack(core.Function):
+    def __init__(self, rows: int, cols: int, **kwargs):
+        super().__init__(lambda *images: stack(rows, cols, *images), **kwargs)
+
+
+class RollingMean(core.Function):
+    def __init__(self, window: int, **kwargs):
+        super().__init__(self.rolling_mean, **kwargs)
+        self.values = [None] * window
+        self.window = window
+        self.ptr = 0
+        self.filter = np.ones(window)
+
+    def rolling_mean(self, center):
+        if center == tuple():
+            self.values = [None] * self.window
+        else:
+            self.values[self.ptr] = center
+            self.ptr = (self.ptr + 1) % self.window
+
+        non_none = np.array(list(filter(lambda v: v is not None, self.values)))
+        if non_none.shape[0] == 0:
+            return tuple()
+        else:
+            return tuple(non_none.mean(axis=0, dtype=int))

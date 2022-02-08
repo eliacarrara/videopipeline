@@ -36,7 +36,7 @@ class TestPipeline(unittest.TestCase):
         self.assertListEqual([0, 6, 12, 18, 24, 30], result)
 
     def test_tree(self):
-        a1 = vpl.generators.Flatten(range(6))
+        a1 = vpl.generators.Flatten(range(70))  # First generator is intentionally larger than second one
         b1 = vpl.core.Function(lambda n: n * 3)(a1)
 
         a2 = vpl.generators.Flatten(['0', '1', '2', '3', '4', '5'])
@@ -86,6 +86,14 @@ class TestPipeline(unittest.TestCase):
         self.assertEqual(len(true), len(result))
         for t, p in zip(true, result):
             self.assertTupleEqual(t, p)
+
+    def test_constant(self):
+        a1 = vpl.generators.Constant(42)
+        a2 = vpl.generators.Flatten(range(10))
+        b1 = vpl.core.Function(lambda *a: chr(a[0]), aggregate=True, collect=True)([a1, a2])
+        result = b1()
+
+        self.assertEqual('*' * 10, ''.join(result))
 
 
 if __name__ == '__main__':
