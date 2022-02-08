@@ -8,7 +8,7 @@ pip install videopipeline
 ```
 
 ## Usage
-videopipeline can be used to process any datatype. Nonetheless, its primary use is intended for video data.
+videopipeline can be used to process any datatype. Nonetheless, its primary use is intended for videos.
 The examples below show some use cases. Refer to the Python-Notebook in this repository to 
 see a more established usage example.
 
@@ -29,8 +29,8 @@ smooth1 = vpl.functions.Smooth(101)(crop)
 stats = vpl.core.Action(lambda frame: print(frame.mean(), frame.std()))(smooth1)
 writer = vpl.actions.VideoWriter(output_path, 30, aggregate=True, collect=False, verbose=True)(stats)
 
-# Invoke pipe
-writer()
+# Invoke pipeline
+_ = writer()
 ```
 
 ### Tree pipeline
@@ -49,11 +49,13 @@ smooth1 = vpl.functions.Smooth(101)(grey1)
 raw_video2 = vpl.generators.ReadVideoFile(video2_path)
 grey2 = vpl.functions.Rgb2Greyscale()(raw_video2)
 smooth2 = vpl.functions.Smooth(101)(grey2)
-diff = vpl.core.Function(lambda *frames: frames[0] - frames[1])([smooth1, smooth2])  # This node has two parents
+
+# This node has two parents
+diff = vpl.core.Function(lambda *frames: frames[0] - frames[1])([smooth1, smooth2])  
 writer = vpl.actions.VideoWriter(output_path, 30, aggregate=True, collect=False, verbose=True)(diff)
 
-# Invoke pipe
-writer()
+# Invoke pipeline
+_ = writer()
 ```
 
 ### Graph pipeline
