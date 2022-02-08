@@ -94,7 +94,7 @@ class AbstractNode:
 
         t0 = None
         if self.timeit:
-            t0 = time.perf_counter_ns()
+            t0 = time.perf_counter()
 
         # Infer current node
         self.cache_data = self.process_fn(*previous_output)
