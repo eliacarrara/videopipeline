@@ -148,7 +148,7 @@ class AbstractNode:
 
         node = args[0]
         one_parent = isinstance(node, AbstractNode)
-        many_parents = isinstance(node, list) and all(map(lambda n: isinstance(n, AbstractNode), node))
+        many_parents = isinstance(node, list) and all(isinstance(n, AbstractNode) for n in node)
         return one_parent or many_parents
 
 

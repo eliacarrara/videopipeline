@@ -65,3 +65,19 @@ _ = writer()
 ### Filter pipeline
 ```py
 ```
+## Terminology
+
+### Node
+
+### Generator
+
+### Function
+
+### Action
+
+### Pipeline
+
+
+## Notice
+When adding custom Nodes, which inherit from `vpl.core.Function`, make sure the output object is different from the 
+input object, as this could lead to unexpected behaviour.

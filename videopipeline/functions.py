@@ -1,6 +1,7 @@
 """
 
 """
+
 import typing
 
 import cv2
@@ -9,20 +10,31 @@ import numpy as np
 from videopipeline import core
 
 
+# TODO assert np.ndarray.ndim
+
+
+def _is_tuple(obj, true_len=2, true_type=int | np.int32):
+    assert isinstance(obj, tuple), type(obj)
+    assert len(obj) == true_len, len(obj)
+    assert all(isinstance(o, true_type) for o in obj), [type(o) for o in obj]
+    return True
+
+
 def crop(frame, position, size):
     assert isinstance(frame, np.ndarray)
-    assert isinstance(position, tuple) and len(position) == 2 and all(isinstance(p, int) for p in position)
-    assert isinstance(size, tuple) and len(size) == 2 and all(isinstance(s, int) for s in size)
+    assert _is_tuple(position)
+    assert _is_tuple(size)
 
     return frame[position[0]:position[0]+size[0], position[1]:position[1]+size[1]]
 
 
-def smooth(frame, window):
+def smooth(frame, window_size):
     assert isinstance(frame, np.ndarray)
-    assert isinstance(window, int)
+    assert isinstance(window_size, int)
 
     out_frame = np.zeros_like(frame)
-    cv2.GaussianBlur(frame, (window, window), 0, out_frame, 0, cv2.BORDER_CONSTANT)
+    cv2.GaussianBlur(frame, (window_size, window_size), 0, out_frame, 0, cv2.BORDER_CONSTANT)
+
     return out_frame
 
 
@@ -37,7 +49,8 @@ def greyscale_to_rgb(frame):
 
 
 def filter_largest_contour(contours):
-    assert isinstance(contours, tuple), type(contours)
+    assert isinstance(contours, tuple)
+
     if len(contours) == 0:
         return None
     else:
@@ -48,17 +61,20 @@ def get_contour_center(contour):
     if contour is None:
         return tuple()
     else:
+        assert isinstance(contour, np.ndarray)
         mom = cv2.moments(contour)
-        return int(mom["m10"] / mom["m00"]), int(mom["m01"] / mom["m00"])
+        return np.int32(mom["m10"] / mom["m00"]), np.int32(mom["m01"] / mom["m00"])
 
 
 def draw_contour_centers(frame, center):
     assert isinstance(frame, np.ndarray)
-    # TODO argument check
+    assert isinstance(center, tuple)
 
-    if center is tuple():
+    if len(center) == 0:
         return frame
     else:
+        assert _is_tuple(center)
+
         out_frame = np.array(frame)
         cv2.circle(out_frame, center, 10, (255, 0, 255), -1)
 
@@ -66,8 +82,11 @@ def draw_contour_centers(frame, center):
 
 
 def draw_line(frame, start_pos, end_pos, color, thickness=3):
-    assert isinstance(frame, np.ndarray)
-    # TODO argument check
+    assert isinstance(frame, np.ndarray) and frame.ndim == 3
+    assert _is_tuple(start_pos)
+    assert _is_tuple(end_pos)
+    assert _is_tuple(color, true_len=3)
+    assert isinstance(thickness, int)
 
     out_frame = np.array(frame)
     cv2.line(out_frame, (start_pos[0], start_pos[1]), (end_pos[0], end_pos[1]), color, thickness)
@@ -134,7 +153,6 @@ def stack(rows, cols, *images):
     ref = images[0].shape
     out_image = np.zeros((ref[0] * rows, ref[1] * cols, 3))
 
-    # TODO somethings not right here
     for i in range(rows):
         for j in range(cols):
             idx = i * rows + j
@@ -152,8 +170,8 @@ class Crop(core.Function):
 
 
 class Smooth(core.Function):
-    def __init__(self, window: int, **kwargs):
-        super().__init__(lambda frame: smooth(frame, window), **kwargs)
+    def __init__(self, window_size: int, **kwargs):
+        super().__init__(lambda frame: smooth(frame, window_size), **kwargs)
 
 
 class Rgb2Greyscale(core.Function):
@@ -182,31 +200,36 @@ class DrawContourCenters(core.Function):
 
 
 class DrawMovementPath(core.Function):
-    def __init__(self, window: int = 5, color_coeff: int = 3, **kwargs):
+    def __init__(self, color_coeff: int = 4, **kwargs):
         super().__init__(self.draw_movement_path, **kwargs)
         self.last_center = None
         self.lines = []
-        self.window = window
         self.color_coeff = color_coeff
 
     def draw_movement_path(self, frame, center):
+        assert isinstance(frame, np.ndarray)
+        assert isinstance(center, tuple)
+
         frame = greyscale_to_rgb(frame)
-        if center == tuple():
+        if len(center) == 0:
             self.last_center = None
         else:
+            assert _is_tuple(center)
+
             self.last_center = center if self.last_center is None else self.last_center
             self.lines.append((self.last_center, center))
             self.last_center = center
 
         if len(self.lines) >= 2:
-
-            last_centers = np.array([line[0] for line in self.lines])
-            centers = np.array([line[1] for line in self.lines])
+            lines = np.array(self.lines)
+            last_centers, centers = lines[:, 0], lines[:, 1]
 
             for lc, c in zip(last_centers, centers):
                 b = int(min(abs(c[0] - lc[0]) * self.color_coeff, 255))
                 g = int(min(abs(c[1] - lc[1]) * self.color_coeff, 255))
-                frame = draw_line(frame, lc, c, (b, g, 0))
+                frame = draw_line(frame, tuple(lc), tuple(c), (b, g, 0))
+
+            print()
 
         return frame
 
@@ -217,14 +240,14 @@ class Threshold(core.Function):
 
 
 class Erode(core.Function):
-    def __init__(self, window: int, **kwargs):
-        kernel = np.ones((window, window), 'uint8')
+    def __init__(self, window_size: int, **kwargs):
+        kernel = np.ones((window_size, window_size), 'uint8')
         super().__init__(lambda frame: erode(frame, kernel), **kwargs)
 
 
 class Dilate(core.Function):
-    def __init__(self, window: int, **kwargs):
-        kernel = np.ones((window, window), 'uint8')
+    def __init__(self, window_size: int, **kwargs):
+        kernel = np.ones((window_size, window_size), 'uint8')
         super().__init__(lambda frame: dilate(frame, kernel), **kwargs)
 
 
@@ -244,8 +267,11 @@ class AbsDiff(core.Function):
         self.last_frame = None
 
     def abs_diff(self, frame):
+        assert isinstance(frame, np.ndarray)
+
         diff = cv2.absdiff(frame, frame) if self.last_frame is None else cv2.absdiff(frame, self.last_frame)
         self.last_frame = frame
+
         return diff
 
 
@@ -255,22 +281,27 @@ class Stack(core.Function):
 
 
 class RollingMean(core.Function):
-    def __init__(self, window: int, **kwargs):
+    def __init__(self, window_size: int, **kwargs):
         super().__init__(self.rolling_mean, **kwargs)
-        self.values = [None] * window
-        self.window = window
         self.ptr = 0
-        self.filter = np.ones(window)
+        self.window_size = window_size
+        self.values = [None] * window_size  # used as ring buffer
 
     def rolling_mean(self, center):
-        if center == tuple():
-            self.values = [None] * self.window
-        else:
-            self.values[self.ptr] = center
-            self.ptr = (self.ptr + 1) % self.window
+        assert isinstance(center, tuple)
 
-        non_none = np.array(list(filter(lambda v: v is not None, self.values)))
-        if non_none.shape[0] == 0:
+        if len(center) == 0:
+            self.values = [None] * self.window_size
+
             return tuple()
         else:
+            assert _is_tuple(center)
+
+            # add value and advance pointer
+            self.values[self.ptr] = center
+            self.ptr = (self.ptr + 1) % self.window_size
+
+            non_none = np.array(list(filter(lambda v: v is not None, self.values)))
+            assert non_none.shape[0] > 0
+
             return tuple(non_none.mean(axis=0, dtype=int))
