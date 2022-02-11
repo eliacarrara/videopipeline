@@ -10,26 +10,28 @@ import numpy as np
 from videopipeline import core
 
 
-# TODO assert np.ndarray.ndim
-
-
-def _is_tuple(obj, true_len=2, true_type=int | np.int32):
+def _check_tuple(obj, true_len=2, true_type=int | np.int32):
     assert isinstance(obj, tuple), type(obj)
     assert len(obj) == true_len, len(obj)
     assert all(isinstance(o, true_type) for o in obj), [type(o) for o in obj]
     return True
 
 
-def crop(frame, position, size):
-    assert isinstance(frame, np.ndarray)
-    assert _is_tuple(position)
-    assert _is_tuple(size)
+def _check_nparray(array, ndim=None, dtype=None):
+    assert isinstance(array, np.ndarray), type(array)
+    assert ndim is None or array.ndim == ndim, array.ndim
+    return dtype is None or array.dtype == dtype, array.dtype
 
+
+def crop(frame, position, size):
+    assert _check_nparray(frame)
+    assert _check_tuple(position)
+    assert _check_tuple(size)
     return frame[position[0]:position[0]+size[0], position[1]:position[1]+size[1]]
 
 
 def smooth(frame, window_size):
-    assert isinstance(frame, np.ndarray)
+    assert _check_nparray(frame)
     assert isinstance(window_size, int)
 
     out_frame = np.zeros_like(frame)
@@ -39,12 +41,12 @@ def smooth(frame, window_size):
 
 
 def rgb_to_greyscale(frame):
-    assert isinstance(frame, np.ndarray)
+    assert _check_nparray(frame, ndim=3)
     return np.array(0.0721 * frame[:, :, 0] + 0.7154 * frame[:, :, 1] + 0.2125 * frame[:, :, 2])  # BRG
 
 
 def greyscale_to_rgb(frame):
-    assert isinstance(frame, np.ndarray)
+    assert _check_nparray(frame, ndim=2)
     return np.dstack([frame, frame, frame])
 
 
@@ -61,19 +63,19 @@ def get_contour_center(contour):
     if contour is None:
         return tuple()
     else:
-        assert isinstance(contour, np.ndarray)
+        assert _check_nparray(contour)
         mom = cv2.moments(contour)
         return np.int32(mom["m10"] / mom["m00"]), np.int32(mom["m01"] / mom["m00"])
 
 
 def draw_contour_centers(frame, center):
-    assert isinstance(frame, np.ndarray)
+    assert _check_nparray(frame)
     assert isinstance(center, tuple)
 
     if len(center) == 0:
         return frame
     else:
-        assert _is_tuple(center)
+        assert _check_tuple(center)
 
         out_frame = np.array(frame)
         cv2.circle(out_frame, center, 10, (255, 0, 255), -1)
@@ -82,10 +84,10 @@ def draw_contour_centers(frame, center):
 
 
 def draw_line(frame, start_pos, end_pos, color, thickness=3):
-    assert isinstance(frame, np.ndarray) and frame.ndim == 3
-    assert _is_tuple(start_pos)
-    assert _is_tuple(end_pos)
-    assert _is_tuple(color, true_len=3)
+    assert _check_nparray(frame, ndim=3)
+    assert _check_tuple(start_pos)
+    assert _check_tuple(end_pos)
+    assert _check_tuple(color, true_len=3)
     assert isinstance(thickness, int)
 
     out_frame = np.array(frame)
@@ -95,7 +97,7 @@ def draw_line(frame, start_pos, end_pos, color, thickness=3):
 
 
 def threshold(frame, t):
-    assert isinstance(frame, np.ndarray)
+    assert _check_nparray(frame)
     assert isinstance(t, int)
 
     out_frame = np.zeros_like(frame)
@@ -105,8 +107,8 @@ def threshold(frame, t):
 
 
 def erode(frame, kernel):
-    assert isinstance(frame, np.ndarray)
-    assert isinstance(kernel, np.ndarray)
+    assert _check_nparray(frame)
+    assert _check_nparray(kernel, ndim=2)
 
     out_frame = np.zeros_like(frame)
     cv2.erode(frame, kernel, out_frame)
@@ -115,8 +117,8 @@ def erode(frame, kernel):
 
 
 def dilate(frame, kernel):
-    assert isinstance(frame, np.ndarray)
-    assert isinstance(kernel, np.ndarray)
+    assert _check_nparray(frame)
+    assert _check_nparray(kernel, ndim=2)
 
     out_frame = np.zeros_like(frame)
     cv2.dilate(frame, kernel, out_frame)
@@ -125,7 +127,7 @@ def dilate(frame, kernel):
 
 
 def canny_edge(frame, t1, t2):
-    assert isinstance(frame, np.ndarray)
+    assert _check_nparray(frame, ndim=2)
     assert isinstance(t1, int)
     assert isinstance(t2, int)
 
@@ -137,7 +139,7 @@ def canny_edge(frame, t1, t2):
 
 
 def find_contours(frame):
-    assert isinstance(frame, np.ndarray)
+    assert _check_nparray(frame, ndim=2)
 
     contours, _ = cv2.findContours(frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -147,7 +149,7 @@ def find_contours(frame):
 def stack(rows, cols, *images):
     assert isinstance(rows, int)
     assert isinstance(cols, int)
-    assert all(isinstance(i, np.ndarray) for i in images)
+    assert all(_check_nparray(i) for i in images)
     assert len(images) <= rows * cols, len(images)
 
     ref = images[0].shape
@@ -155,7 +157,7 @@ def stack(rows, cols, *images):
 
     for i in range(rows):
         for j in range(cols):
-            idx = i * rows + j
+            idx = i * cols + j
             if idx < len(images):
                 img = images[idx]
                 sub_img = img if img.ndim == 3 else np.dstack([img, img, img])
@@ -207,14 +209,16 @@ class DrawMovementPath(core.Function):
         self.color_coeff = color_coeff
 
     def draw_movement_path(self, frame, center):
-        assert isinstance(frame, np.ndarray)
+        assert _check_nparray(frame)
         assert isinstance(center, tuple)
 
-        frame = greyscale_to_rgb(frame)
+        if frame.ndim == 2:
+            frame = greyscale_to_rgb(frame)
+
         if len(center) == 0:
             self.last_center = None
         else:
-            assert _is_tuple(center)
+            assert _check_tuple(center)
 
             self.last_center = center if self.last_center is None else self.last_center
             self.lines.append((self.last_center, center))
@@ -228,8 +232,6 @@ class DrawMovementPath(core.Function):
                 b = int(min(abs(c[0] - lc[0]) * self.color_coeff, 255))
                 g = int(min(abs(c[1] - lc[1]) * self.color_coeff, 255))
                 frame = draw_line(frame, tuple(lc), tuple(c), (b, g, 0))
-
-            print()
 
         return frame
 
@@ -267,7 +269,7 @@ class AbsDiff(core.Function):
         self.last_frame = None
 
     def abs_diff(self, frame):
-        assert isinstance(frame, np.ndarray)
+        assert _check_nparray(frame)
 
         diff = cv2.absdiff(frame, frame) if self.last_frame is None else cv2.absdiff(frame, self.last_frame)
         self.last_frame = frame
@@ -295,7 +297,7 @@ class RollingMean(core.Function):
 
             return tuple()
         else:
-            assert _is_tuple(center)
+            assert _check_tuple(center)
 
             # add value and advance pointer
             self.values[self.ptr] = center
