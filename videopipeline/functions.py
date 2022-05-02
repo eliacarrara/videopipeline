@@ -56,31 +56,59 @@ def filter_largest_contour(contours):
     if len(contours) == 0:
         return None
     else:
-        return max(contours, key=lambda c: cv2.contourArea(c))
+        return max(contours, key=cv2.contourArea)
 
 
 def get_contour_center(contour):
     if contour is None:
-        return tuple()
+        return None
     else:
         assert _check_nparray(contour)
         mom = cv2.moments(contour)
-        return np.int32(mom["m10"] / mom["m00"]), np.int32(mom["m01"] / mom["m00"])
+        x, y = np.int32(mom["m10"] / mom["m00"]), np.int32(mom["m01"] / mom["m00"])
+        return np.array([x, y])
+
+
+def find_contours(frame):
+    assert _check_nparray(frame, ndim=2)
+    contours, _ = cv2.findContours(frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    return contours
+
+
+def convex_contour(contour):
+    if contour is None:
+        return None
+    else:
+        assert _check_nparray(contour)
+        hull = cv2.convexHull(contour)
+        return hull
+
+
+def bounding_box(contour):
+    if contour is None:
+        return None
+    else:
+        return cv2.boundingRect(contour)
 
 
 def draw_contour_centers(frame, center):
     assert _check_nparray(frame)
-    assert isinstance(center, tuple)
 
-    if len(center) == 0:
+    if center is None:
         return frame
     else:
-        assert _check_tuple(center)
+        assert _check_nparray(center)
 
         out_frame = np.array(frame)
-        cv2.circle(out_frame, center, 10, (255, 0, 255), -1)
+        cv2.circle(out_frame, tuple(center), 10, (255, 0, 255), -1)
 
         return out_frame
+
+
+def draw_text(frame, text, org=(100, 100), scale=3, color=(255, 0, 255), thickness=3):
+    assert _check_nparray(frame)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    return cv2.putText(np.array(frame), f'{text}', org, font, scale, color, thickness, cv2.LINE_AA)
 
 
 def draw_line(frame, start_pos, end_pos, color, thickness=3):
@@ -138,14 +166,6 @@ def canny_edge(frame, t1, t2):
     return out_frame
 
 
-def find_contours(frame):
-    assert _check_nparray(frame, ndim=2)
-
-    contours, _ = cv2.findContours(frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    return contours
-
-
 def stack(rows, cols, *images):
     assert isinstance(rows, int)
     assert isinstance(cols, int)
@@ -196,9 +216,29 @@ class GetContourCenter(core.Function):
         super().__init__(get_contour_center, **kwargs)
 
 
+class FindContours(core.Function):
+    def __init__(self, **kwargs):
+        super().__init__(lambda frame: find_contours(frame), **kwargs)
+
+
+class ConvexHull(core.Function):
+    def __init__(self, **kwargs):
+        super().__init__(convex_contour, **kwargs)
+
+
+class BoundingBox(core.Function):
+    def __init__(self, **kwargs):
+        super().__init__(bounding_box, **kwargs)
+
+
 class DrawContourCenters(core.Function):
     def __init__(self, **kwargs):
         super().__init__(draw_contour_centers, **kwargs)
+
+
+class DrawText(core.Function):
+    def __init__(self, org=(100, 100), scale=3, color=(255, 0, 255), thickness=3, **kwargs):
+        super().__init__(lambda frame, text: draw_text(frame, f'{text}', org=org, scale=scale, color=color, thickness=thickness), **kwargs)
 
 
 class DrawMovementPath(core.Function):
@@ -210,19 +250,15 @@ class DrawMovementPath(core.Function):
 
     def draw_movement_path(self, frame, center):
         assert _check_nparray(frame)
-        assert isinstance(center, tuple)
 
         if frame.ndim == 2:
             frame = greyscale_to_rgb(frame)
 
-        if len(center) == 0:
-            self.last_center = None
-        else:
-            assert _check_tuple(center)
-
-            self.last_center = center if self.last_center is None else self.last_center
+        if center is not None and self.last_center is None:
+            self.lines = []
+        elif center is not None and self.last_center is not None:
+            assert _check_nparray(center)
             self.lines.append((self.last_center, center))
-            self.last_center = center
 
         if len(self.lines) >= 2:
             lines = np.array(self.lines)
@@ -233,6 +269,7 @@ class DrawMovementPath(core.Function):
                 g = int(min(abs(c[1] - lc[1]) * self.color_coeff, 255))
                 frame = draw_line(frame, tuple(lc), tuple(c), (b, g, 0))
 
+        self.last_center = center
         return frame
 
 
@@ -258,11 +295,6 @@ class CannyEdge(core.Function):
         super().__init__(lambda frame: canny_edge(frame, t1, t2), **kwargs)
 
 
-class FindContours(core.Function):
-    def __init__(self, **kwargs):
-        super().__init__(lambda frame: find_contours(frame), **kwargs)
-
-
 class AbsDiff(core.Function):
     def __init__(self, **kwargs):
         super().__init__(self.abs_diff, **kwargs)
@@ -281,29 +313,3 @@ class Stack(core.Function):
     def __init__(self, rows: int, cols: int, **kwargs):
         super().__init__(lambda *images: stack(rows, cols, *images), **kwargs)
 
-
-class RollingMean(core.Function):
-    def __init__(self, window_size: int, **kwargs):
-        super().__init__(self.rolling_mean, **kwargs)
-        self.ptr = 0
-        self.window_size = window_size
-        self.values = [None] * window_size  # used as ring buffer
-
-    def rolling_mean(self, center):
-        assert isinstance(center, tuple)
-
-        if len(center) == 0:
-            self.values = [None] * self.window_size
-
-            return tuple()
-        else:
-            assert _check_tuple(center)
-
-            # add value and advance pointer
-            self.values[self.ptr] = center
-            self.ptr = (self.ptr + 1) % self.window_size
-
-            non_none = np.array(list(filter(lambda v: v is not None, self.values)))
-            assert non_none.shape[0] > 0
-
-            return tuple(non_none.mean(axis=0, dtype=int))
