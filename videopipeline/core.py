@@ -51,22 +51,26 @@ class AbstractNode:
         elif not is_modelling and self.aggregate:  # infer until generator exhausts
             collection, iteration, run = [], 0, True
 
-            while run:
-                try:
-                    if self.verbose:
-                        print(f"Aggregating {iteration}")
+            try:
+                while run:
+                    try:
+                        if self.verbose:
+                            print(f"Aggregating {iteration}")
 
-                    output = self.infer()
-                    self.clear_cache()
+                        output = self.infer()
+                        self.clear_cache()
 
-                    if self.collect:
-                        collection.append(output)
-                except AbortPipeline:
-                    self.clear_cache()
-                except StopIteration:
-                    run = False
+                        if self.collect:
+                            collection.append(output)
+                    except AbortPipeline:
+                        self.clear_cache()
+                    except StopIteration:
+                        run = False
 
-                iteration += 1
+                    iteration += 1
+            except KeyboardInterrupt:
+                if self.verbose:
+                    print("Interrupted...")
 
             return collection
             
