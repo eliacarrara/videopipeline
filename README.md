@@ -1,5 +1,7 @@
 # Videopypeline
 
+[![Documentation Status](https://readthedocs.org/projects/videopypeline/badge/?version=latest)](https://videopypeline.readthedocs.io/en/latest/?badge=latest)
+
 A fancy wrapper for [opencv](https://opencv.org/) inspired by the [keras model API](https://keras.io/api/models/model/).
 
 ## Install
