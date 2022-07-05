@@ -33,4 +33,4 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Publish package
-      run: python -m twine -r pypi -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
+      run: python -m twine upload -r pypi -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
