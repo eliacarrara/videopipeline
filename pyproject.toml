@@ -4,3 +4,39 @@ requires = [
     "wheel"
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "videopypeline"
+description = "Framework to process video data"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["pipeline", "image-processing", "video-processing"]
+license = {text = "BSD-4-Clause License"}
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "numpy",
+    "opencv-python",
+    "graphviz",
+]
+
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "videopypeline.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["videopypeline"]
+
+[project.optional-dependencies]
+rest = ["docutils>=0.3"]
