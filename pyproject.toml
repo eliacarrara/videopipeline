@@ -9,6 +9,9 @@ build-backend = "setuptools.build_meta"
 name = "videopypeline"
 description = "Framework to process video data"
 readme = "README.md"
+homepage = "https://pypi.org/project/videopypeline/"
+repository = "https://github.com/eliacarrara/videopypeline"
+documentation = "https://videopypeline.readthedocs.io/en/latest/"
 requires-python = ">=3.10"
 keywords = ["pipeline", "image-processing", "video-processing"]
 license = {text = "BSD-4-Clause License"}
