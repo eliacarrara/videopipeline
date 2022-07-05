@@ -9,12 +9,16 @@ build-backend = "setuptools.build_meta"
 name = "videopypeline"
 description = "Framework to process video data"
 readme = "README.md"
-homepage = "https://pypi.org/project/videopypeline/"
-repository = "https://github.com/eliacarrara/videopypeline"
-documentation = "https://videopypeline.readthedocs.io/en/latest/"
 requires-python = ">=3.10"
-keywords = ["pipeline", "image-processing", "video-processing"]
 license = {text = "BSD-4-Clause License"}
+authors = [
+    {email = "elia.carrara@bluewin.ch"},
+    {name = "Elia Carrara"}
+]
+maintainers = [
+    {name = "Elia Carrara", email = "elia.carrara@bluewin.ch"}
+]
+keywords = ["pipeline", "image-processing", "video-processing"]
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
@@ -31,8 +35,14 @@ dependencies = [
     "opencv-python",
     "graphviz",
 ]
-
 dynamic = ["version"]
+
+
+[project.urls]
+homepage = "https://pypi.org/project/videopypeline/"
+repository = "https://github.com/eliacarrara/videopypeline"
+documentation = "https://videopypeline.readthedocs.io/en/latest/"
+
 
 [tool.setuptools.dynamic]
 version = {attr = "videopypeline.__version__"}
