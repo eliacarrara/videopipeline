@@ -8,7 +8,10 @@ Welcome to videopypeline's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+
+   getstartetd.rst
+   examples.rst
+   api.rst
 
 
 

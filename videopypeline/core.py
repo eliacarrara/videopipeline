@@ -1,12 +1,5 @@
 r"""
-
-              _/        _/                                                              _/  _/
- _/      _/        _/_/_/    _/_/      _/_/    _/_/_/    _/    _/  _/_/_/      _/_/    _/      _/_/_/      _/_/
-_/      _/  _/  _/    _/  _/_/_/_/  _/    _/  _/    _/  _/    _/  _/    _/  _/_/_/_/  _/  _/  _/    _/  _/_/_/_/
- _/  _/    _/  _/    _/  _/        _/    _/  _/    _/  _/    _/  _/    _/  _/        _/  _/  _/    _/  _/
-  _/      _/    _/_/_/    _/_/_/    _/_/    _/_/_/      _/_/_/  _/_/_/      _/_/_/  _/  _/  _/    _/    _/_/_/
-                                           _/              _/  _/
-                                          _/          _/_/    _/
+asdfasdf
 """
 
 from __future__ import annotations
@@ -24,6 +17,7 @@ class AbortPipeline(Exception):
 
 
 class AbstractNode:
+    """Base class of pipeline node. """
     def __init__(self, process_fn: typing.Callable, name: str = "", verbose: bool = False, debug_verbose: bool = False,
                  aggregate: bool = False, collect: bool = True, timeit: bool = False):
         assert callable(process_fn)
