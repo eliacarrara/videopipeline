@@ -1,5 +1,5 @@
 __all__ = ["core", "generators", "functions", "actions"]
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 __author__ = "Elia Carrara"
 
 from . import core

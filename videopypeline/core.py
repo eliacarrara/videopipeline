@@ -1,5 +1,5 @@
 r"""
-asdfasdf
+This module contains the core functions and classes for the videopypeline package.
 """
 
 from __future__ import annotations
@@ -13,27 +13,68 @@ import numpy as np
 
 
 class AbortPipeline(Exception):
+    """ Exception used to interrupt the pipeline execution.
+
+    This Exception is used by :py:class:`core.Function`-Nodes. When the
+    :py:attr:`core.Function.filter_fn`-Method returns False this exception is thrown.
+    """
     pass
 
 
 class AbstractNode:
-    """Base class of pipeline node. """
+    """Base node class.
+
+    :param process_fn: The operation which will be wrapped by the node
+    :type process_fn: callable
+    :param name: The name of the node
+    :type name: str, optional
+    :param verbose: If true, prints information, defaults to False
+    :type verbose: bool, optional
+    :param debug_verbose: If true, prints debug information, defaults to False
+    :type debug_verbose: bool, optional
+    :param aggregate: If true, invokes the previous nodes until their generator exhausts. The output of every invocation
+        is stored in a list before passing it to subsequent nodes (See ``collect``). Defaults to False.
+    :type aggregate: bool, optional
+    :param collect: If true, when aggregating, the nodes output will be stored, otherwise discarded (See ``aggregate``).
+        Defaults to False.
+    :type collect: bool, optional
+    :param timeit: If true, the execution time for invoking this node is timed, defaults to False
+    :type timeit: bool, optional
+    """
+
     def __init__(self, process_fn: typing.Callable, name: str = "", verbose: bool = False, debug_verbose: bool = False,
                  aggregate: bool = False, collect: bool = True, timeit: bool = False):
         assert callable(process_fn)
-        self.previous: typing.List[AbstractNode] = []
-        self.process_fn = process_fn
-        self.cache_data = None
-        self.time_data = []
+        self.previous: typing.List[AbstractNode] = []  #: The previous linked nodes
+        self.process_fn: typing.Callable = process_fn  #: The wrapped callable
+        self.cache_data = None  #: The cached output of this node
+        self.time_data = []  #: The collected timer data
 
-        self.name: str = name
-        self.verbose: bool = bool(verbose)
-        self.debug_verbose: bool = bool(debug_verbose)
-        self.aggregate: bool = bool(aggregate)
-        self.collect: bool = bool(collect)
-        self.timeit: bool = bool(timeit)
+        self.name: str = name  #: The name of the node
+        self.verbose: bool = bool(verbose)  #: If true, console output is more verbose
+        self.debug_verbose: bool = bool(debug_verbose)  #: If true, debug information will be printed
+        self.aggregate: bool = bool(aggregate)  #: If true, :py:meth:`__call__` invokes :py:meth:`invoke` until the generator exhausts, otherwise only once
+        self.collect: bool = bool(collect)  #: Applicable if :py:attr:`aggregate` is true. If true, the outputs will be collected into a list, otherwise discared
+        self.timeit: bool = bool(timeit)  #: If true, the execution time is timed.
 
     def __call__(self, *args):
+        """ Wrapper for :py:meth:`infer` and :py:meth:`model`
+
+        This method is a convenience wrapper for two functions :py:meth:`infer` and :py:meth:`model`.
+        If ``args[0]`` is of type ``AbstractNode`` or ``List[AbstractNode]``, :py:meth:`model` is invoked, otherwise
+        :py:meth:`infer`.
+
+        There are two types of inferring. This is controlled by :py:attr:`aggregate`. The two types are defined as
+        follows:
+
+        1. (``aggregate == False``) :py:meth:`infer` is called once and the output is returned.
+        2. (``aggregate == True``) :py:meth:`infer` is called until the underlying generator exhausts.
+           If :py:attr:`collect` is ``True`` the output for every iteration is stored in a list which is returned.
+           If :py:attr:`collect` is ``True`` the output is discarded.
+
+        :param args: asdf
+        :return: asdf
+        """
         is_modelling = self.is_modelling(*args)
 
         if is_modelling:  # model
@@ -72,10 +113,19 @@ class AbstractNode:
             assert False
 
     def __getitem__(self, n: int) -> AbstractNode:
+        """
+
+        :param n:
+        :return:
+        """
         assert isinstance(n, int)
         return AbstractNode(lambda *args: args[0][n], name=f"ArgSelect{n}")(self)
 
     def infer(self):
+        """ Infer
+
+        :return: asdf
+        """
         assert isinstance(self.previous, list)
         assert all(isinstance(p, AbstractNode) for p in self.previous)
 
@@ -108,11 +158,20 @@ class AbstractNode:
         return self.cache_data
 
     def clear_cache(self):
+        """
+
+        :return:
+        """
         for p in self.previous:
             p.clear_cache()
         self.cache_data = None
 
     def model(self, node: AbstractNode) -> AbstractNode:
+        """
+
+        :param node:
+        :return:
+        """
         assert self.is_modelling(node)
 
         if isinstance(node, list):
@@ -124,23 +183,44 @@ class AbstractNode:
         return self
 
     def start(self):
+        """
+
+        :return:
+        """
         for p in self.previous:
             p.start()
         self.start_callback()
 
     def end(self):
+        """
+
+        :return:
+        """
         for p in self.previous:
             p.end()
         self.end_callback()
 
     def start_callback(self):
+        """
+
+        :return:
+        """
         pass
 
     def end_callback(self):
+        """
+
+        :return:
+        """
         pass
 
     @staticmethod
     def is_modelling(*args) -> bool:
+        """
+
+        :param args:
+        :return:
+        """
         if len(args) != 1:
             return False
 
@@ -151,11 +231,19 @@ class AbstractNode:
 
 
 class Function(AbstractNode):
+    """
+
+    """
+
     def __init__(self, process_fn, **kwargs):
         super().__init__(process_fn, **kwargs)
 
 
 class Generator(Function):
+    """
+
+    """
+
     def __init__(self, generator_fn: typing.Callable[[], typing.Generator], **kwargs):
         super().__init__(self.generate, **kwargs)
         self.generator = generator_fn()
@@ -165,6 +253,10 @@ class Generator(Function):
 
 
 class Action(Function):
+    """
+
+    """
+
     def __init__(self, action_fn: typing.Callable, **kwargs):
         super().__init__(self.action, **kwargs)
         self.action_fn = action_fn
@@ -175,6 +267,10 @@ class Action(Function):
 
 
 class Filter(Action):
+    """
+
+    """
+
     def __init__(self, filter_fn: typing.Callable[..., bool], **kwargs):
         super().__init__(self.filter, **kwargs)
         self.filter_fn = filter_fn
@@ -185,6 +281,10 @@ class Filter(Action):
 
 
 class Pipeline(Function):
+    """
+
+    """
+
     def __init__(self, end_node: AbstractNode | typing.List[AbstractNode], **kwargs):
         super().__init__(self.pipeline, **kwargs)
         if isinstance(end_node, list):
