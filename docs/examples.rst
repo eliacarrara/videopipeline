@@ -14,6 +14,16 @@ see a more established usage example.
 Linear pipeline
 ***************
 
+.. graphviz::
+
+    digraph Linear {
+        "ReadVideoFile" -> "Rgb2Greyscale"
+        "Rgb2Greyscale" -> "Crop"
+        "Crop" -> "Smooth"
+        "Smooth" -> "Print"
+        "Print" -> "VideoWriter"
+    }
+
 .. code-block:: python
 
     import videopypeline as vpl
@@ -36,6 +46,21 @@ Linear pipeline
 *************
 Tree pipeline
 *************
+
+.. graphviz::
+
+    digraph Tree {
+        "ReadVideoFile1" -> "Rgb2Greyscale1"
+        "Rgb2Greyscale1" -> "Smooth1"
+
+        "ReadVideoFile2" -> "Rgb2Greyscale2"
+        "Rgb2Greyscale2" -> "Smooth2"
+
+        "Smooth1" -> "ImageDiff"
+        "Smooth2" -> "ImageDiff"
+
+        "ImageDiff" -> "VideoWriter"
+    }
 
 .. code-block:: python
 

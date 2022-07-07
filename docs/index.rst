@@ -14,7 +14,6 @@ Welcome to videopypeline's documentation!
    api.rst
 
 
-
 Indices and tables
 ==================
 

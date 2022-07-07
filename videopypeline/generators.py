@@ -7,9 +7,14 @@ import cv2
 from videopypeline import core
 
 
-def flatten(iterable):
+def iterate(iterable):
     for item in iterable:
         yield item
+
+
+def endless_value(c):
+    while True:
+        yield c
 
 
 def read_video_file(filepath):
@@ -22,21 +27,21 @@ def read_video_file(filepath):
     cap.release()
 
 
-def constant_generator(c):
-    while True:
-        yield c
+class Value(core.Generator):
+    def __init__(self, value, **kwargs):
+        super().__init__(lambda: iterate([value]), **kwargs)
 
 
-class Flatten(core.Generator):
+class Iteration(core.Generator):
     def __init__(self, iterable, **kwargs):
-        super().__init__(lambda: flatten(iterable), **kwargs)
+        super().__init__(lambda: iterate(iterable), **kwargs)
+
+
+class EndlessValue(core.Generator):
+    def __init__(self, c, **kwargs):
+        super().__init__(lambda: endless_value(c), **kwargs)
 
 
 class ReadVideoFile(core.Generator):
     def __init__(self, filepath, **kwargs):
         super().__init__(lambda: read_video_file(filepath), **kwargs)
-
-
-class Constant(core.Generator):
-    def __init__(self, c, **kwargs):
-        super().__init__(lambda: constant_generator(c), **kwargs)

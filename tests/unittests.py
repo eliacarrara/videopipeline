@@ -8,7 +8,7 @@ import videopypeline
 class TestPipeline(unittest.TestCase):
 
     def test_linear(self):
-        a1 = videopypeline.generators.Flatten(range(6))
+        a1 = videopypeline.generators.Iteration(range(6))
         b1 = videopypeline.core.Function(lambda n: n * 3)(a1)
         c1 = videopypeline.core.Function(lambda n: n + 1)(b1)
         d1 = videopypeline.core.Function(lambda n: n * 2, aggregate=True)(c1)
@@ -18,7 +18,7 @@ class TestPipeline(unittest.TestCase):
 
     def test_no_collect(self):
         tmp = []
-        a1 = videopypeline.generators.Flatten(range(6))
+        a1 = videopypeline.generators.Iteration(range(6))
         b1 = videopypeline.core.Function(lambda n: n * 3)(a1)
         c1 = videopypeline.core.Action(tmp.append, aggregate=True, collect=False)(b1)
         result = c1()
@@ -27,7 +27,7 @@ class TestPipeline(unittest.TestCase):
         self.assertListEqual([0, 3, 6, 9, 12, 15], tmp)
 
     def test_linear_with_action(self):
-        a1 = videopypeline.generators.Flatten(range(6))
+        a1 = videopypeline.generators.Iteration(range(6))
         b1 = videopypeline.core.Function(lambda n: n * 3)(a1)
         c1 = videopypeline.core.Action(lambda *args: "some value")(b1)
         d1 = videopypeline.core.Function(lambda n: n * 2, aggregate=True)(c1)
@@ -36,10 +36,10 @@ class TestPipeline(unittest.TestCase):
         self.assertListEqual([0, 6, 12, 18, 24, 30], result)
 
     def test_tree(self):
-        a1 = videopypeline.generators.Flatten(range(70))  # First generator is intentionally larger than second one
+        a1 = videopypeline.generators.Iteration(range(70))  # First generator is intentionally larger than second one
         b1 = videopypeline.core.Function(lambda n: n * 3)(a1)
 
-        a2 = videopypeline.generators.Flatten(['0', '1', '2', '3', '4', '5'])
+        a2 = videopypeline.generators.Iteration(['0', '1', '2', '3', '4', '5'])
         b2 = videopypeline.core.Function(lambda n: f' {n} ')(a2)
 
         c1 = videopypeline.core.Function(lambda *args: args, aggregate=True)([b1, b2])
@@ -52,7 +52,7 @@ class TestPipeline(unittest.TestCase):
             self.assertTupleEqual(t, p)
 
     def test_filter_linear(self):
-        a1 = videopypeline.generators.Flatten(range(10))
+        a1 = videopypeline.generators.Iteration(range(10))
         b1 = videopypeline.core.Filter(lambda n: n < 5, aggregate=True)(a1)
         p = videopypeline.core.Pipeline(b1)
         result = p()
@@ -60,7 +60,7 @@ class TestPipeline(unittest.TestCase):
         self.assertListEqual([0, 1, 2, 3, 4], result)
 
     def test_graph(self):
-        a1 = videopypeline.generators.Flatten(range(10))
+        a1 = videopypeline.generators.Iteration(range(10))
         b1 = videopypeline.core.Function(lambda n: n + 1)(a1)
         b2 = videopypeline.core.Function(lambda n: n - 1)(a1)
         c1 = videopypeline.core.Function(lambda *a: np.mean(a, dtype=int), aggregate=True)([b1, b2])
@@ -72,7 +72,7 @@ class TestPipeline(unittest.TestCase):
         tmp_a = []
         tmp_b = []
 
-        a1 = videopypeline.generators.Flatten(range(5))
+        a1 = videopypeline.generators.Iteration(range(5))
         b1 = videopypeline.core.Function(lambda n: (n, chr(ord('a') + n)))(a1)
         c1 = videopypeline.core.Action(tmp_a.append)(b1[0])
         c2 = videopypeline.core.Action(tmp_b.append)(b1[1])
@@ -88,8 +88,8 @@ class TestPipeline(unittest.TestCase):
             self.assertTupleEqual(t, p)
 
     def test_constant(self):
-        a1 = videopypeline.generators.Constant(42)
-        a2 = videopypeline.generators.Flatten(range(10))
+        a1 = videopypeline.generators.EndlessValue(42)
+        a2 = videopypeline.generators.Iteration(range(10))
         b1 = videopypeline.core.Function(lambda *a: chr(a[0]), aggregate=True, collect=True)([a1, a2])
         result = b1()
 

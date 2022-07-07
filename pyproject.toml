@@ -12,7 +12,6 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "BSD-4-Clause License"}
 authors = [
-    {email = "elia.carrara@bluewin.ch"},
     {name = "Elia Carrara"}
 ]
 maintainers = [
@@ -38,9 +37,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "numpy",
-    "opencv-python",
-    "graphviz",
+    "numpy>=1.21.6",
+    "opencv-python>=4.5.5.62",
+    "graphviz>=0.19.1",
 ]
 dynamic = ["version"]
 
