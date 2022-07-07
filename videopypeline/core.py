@@ -15,8 +15,7 @@ import numpy as np
 class AbortPipeline(Exception):
     """ Exception used to interrupt the pipeline execution.
 
-    This Exception is used by :py:class:`core.Function`-Nodes. When the
-    :py:attr:`core.Function.filter_fn`-Method returns False this exception is thrown.
+    See in :py:class:`Function` for more information.
     """
     pass
 
@@ -32,10 +31,9 @@ class AbstractNode:
     :type verbose: bool, optional
     :param debug_verbose: If true, prints debug information, defaults to False
     :type debug_verbose: bool, optional
-    :param aggregate: If true, invokes the previous nodes until their generator exhausts. The output of every invocation
-        is stored in a list before passing it to subsequent nodes (See ``collect``). Defaults to False.
+    :param aggregate: If true, infers node until stop condition is reached (See :py:meth:`__call__`). Defaults to False.
     :type aggregate: bool, optional
-    :param collect: If true, when aggregating, the nodes output will be stored, otherwise discarded (See ``aggregate``).
+    :param collect: If true, when inferring, the output will be stored, otherwise discarded (See :py:meth:`__call__`).
         Defaults to False.
     :type collect: bool, optional
     :param timeit: If true, the execution time for invoking this node is timed, defaults to False
@@ -58,22 +56,31 @@ class AbstractNode:
         self.timeit: bool = bool(timeit)  #: If true, the execution time is timed.
 
     def __call__(self, *args):
-        """ Wrapper for :py:meth:`infer` and :py:meth:`model`
+        """ Convenience wrapper for :py:meth:`model` and :py:meth:`infer`.
 
-        This method is a convenience wrapper for two functions :py:meth:`infer` and :py:meth:`model`.
-        If ``args[0]`` is of type ``AbstractNode`` or ``List[AbstractNode]``, :py:meth:`model` is invoked, otherwise
-        :py:meth:`infer`.
+        **Modelling**
 
-        There are two types of inferring. This is controlled by :py:attr:`aggregate`. The two types are defined as
-        follows:
+        Connect two nodes together, making the node provided in ``args`` the parent of the current node.
+
+        Ensure the ``args[0]`` is of type :py:class:`AbstractNode` or a list of :py:class:`AbstractNode` to invoke
+        :py:meth:`model`. If ``args[0]`` is a list of :py:class:`AbstractNode` all nodes will be linked as parents.
+        :py:meth:`model` returns a reference to ``self``.
+
+        **Inferring**
+
+        Infers all parent nodes, forwards the output(s) to the wrapped function in the current node and invokes it. The
+        function :py:meth:`infer` is invoked if the arguments do not meet modelling conditions.
+
+        Depending on the value of :py:attr:`aggregate`, there are two ways of inferring:
 
         1. (``aggregate == False``) :py:meth:`infer` is called once and the output is returned.
-        2. (``aggregate == True``) :py:meth:`infer` is called until the underlying generator exhausts.
+        2. (``aggregate == True``) :py:meth:`infer` is called until the underlying :py:class:`Generator` exhausts.
            If :py:attr:`collect` is ``True`` the output for every iteration is stored in a list which is returned.
-           If :py:attr:`collect` is ``True`` the output is discarded.
+           If :py:attr:`collect` is ``False`` the output is discarded.
 
-        :param args: asdf
-        :return: asdf
+        :param args: Previous node or node input.
+        :type args: AbstractNode, List[AbstractNode] or any
+        :return: Either ``self``, or the output of :py:attr:`process_fn`.
         """
         is_modelling = self.is_modelling(*args)
 
@@ -124,7 +131,7 @@ class AbstractNode:
     def infer(self):
         """ Infer
 
-        :return: asdf
+        :return:
         """
         assert isinstance(self.previous, list)
         assert all(isinstance(p, AbstractNode) for p in self.previous)
@@ -231,11 +238,15 @@ class AbstractNode:
 
 
 class Function(AbstractNode):
+    """ A node which wraps a function.
+
+    This node type wraps a function ``process_fn`` and returns the output.
+
+    :param process_fn: The function which will be wrapped by the node
+    :type process_fn: callable
     """
 
-    """
-
-    def __init__(self, process_fn, **kwargs):
+    def __init__(self, process_fn: typing.Callable, **kwargs):
         super().__init__(process_fn, **kwargs)
 
 
@@ -267,13 +278,18 @@ class Action(Function):
 
 
 class Filter(Action):
-    """
+    """ A node which can conditional filter the pipeline execution.
 
+    This node can control whether a pipeline execution runs or halts. This behaviour is controlled with the output of
+    the predicate :py:attr:`filter_fn`. The predicate is inferred every iteration.
+
+    :param filter_fn: Predicate function which is used to filter
+    :type filter_fn: callable
     """
 
     def __init__(self, filter_fn: typing.Callable[..., bool], **kwargs):
         super().__init__(self.filter, **kwargs)
-        self.filter_fn = filter_fn
+        self.filter_fn = filter_fn  #: Predicate used to determine if the pipeline execution continues.
 
     def filter(self, *args):
         if not self.filter_fn(*args):
