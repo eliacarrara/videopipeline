@@ -84,18 +84,18 @@ def filter_largest_contour(contours):
 
     if len(contours) == 0:
         return None
-    else:
-        return max(contours, key=cv2.contourArea)
+
+    return max(contours, key=cv2.contourArea)
 
 
 def get_contour_center(contour):
     if contour is None:
         return None
-    else:
-        assert _check_nparray(contour)
-        mom = cv2.moments(contour)
-        x, y = np.int32(mom["m10"] / mom["m00"]), np.int32(mom["m01"] / mom["m00"])
-        return np.array([x, y])
+
+    assert _check_nparray(contour)
+    mom = cv2.moments(contour)
+    x, y = np.int32(mom["m10"] / mom["m00"]), np.int32(mom["m01"] / mom["m00"])
+    return np.array([x, y])
 
 
 def find_contours(frame):
@@ -107,17 +107,17 @@ def find_contours(frame):
 def convex_contour(contour):
     if contour is None:
         return None
-    else:
-        assert _check_nparray(contour)
-        hull = cv2.convexHull(contour)
-        return hull
+
+    assert _check_nparray(contour)
+    hull = cv2.convexHull(contour)
+    return hull
 
 
 def bounding_box(contour):
     if contour is None:
         return None
-    else:
-        return cv2.boundingRect(contour)
+
+    return cv2.boundingRect(contour)
 
 
 def draw_contour_centers(frame, center):
@@ -125,13 +125,12 @@ def draw_contour_centers(frame, center):
 
     if center is None:
         return frame
-    else:
-        assert _check_nparray(center)
 
-        out_frame = np.array(frame)
-        cv2.circle(out_frame, tuple(center), 10, (255, 0, 255), -1)
+    assert _check_nparray(center)
+    out_frame = np.array(frame)
+    cv2.circle(out_frame, tuple(center), 10, (255, 0, 255), -1)
 
-        return out_frame
+    return out_frame
 
 
 def draw_text(frame, text, org=(100, 100), scale=3, color=(255, 0, 255), thickness=3):
@@ -257,7 +256,7 @@ class GetContourCenter(core.Function):
 
 class FindContours(core.Function):
     def __init__(self, **kwargs):
-        super().__init__(lambda frame: find_contours(frame), **kwargs)
+        super().__init__(find_contours, **kwargs)
 
 
 class ConvexHull(core.Function):

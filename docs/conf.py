@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "videopypeline"
-copyright = "2022, Elia Carrara"
+project_copyright = "2022, Elia Carrara"
 author = "Elia Carrara"
 
 

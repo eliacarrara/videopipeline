@@ -1,3 +1,6 @@
+""" videopypeline module.
+"""
+
 __all__ = ["core", "generators", "functions", "actions"]
 __version__ = "0.0.4"
 __author__ = "Elia Carrara"

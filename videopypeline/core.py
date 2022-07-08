@@ -39,14 +39,22 @@ class AbstractNode:
     :type timeit: bool, optional
     """
 
-    def __init__(self, process_fn: typing.Callable, name: str = "", aggregate: bool = False, collect: bool = True,
-                 verbose: bool = False, debug_verbose: bool = False, timeit: bool = False):
-        assert callable(process_fn)
+    def __init__(
+        self,
+        process_fn: typing.Callable,
+        name: str = "",
+        aggregate: bool = False,
+        collect: bool = True,
+        verbose: bool = False,
+        debug_verbose: bool = False,
+        timeit: bool = False,
+    ):
         #: The previous linked nodes
         self.previous: typing.List[AbstractNode] = []
 
         #: The wrapped callable
         self.process_fn: typing.Callable = process_fn
+        assert callable(process_fn)
 
         #: The cached output of this node
         self.cache_data = None

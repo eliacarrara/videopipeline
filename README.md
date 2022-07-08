@@ -2,6 +2,7 @@
 
 ![example workflow](https://github.com/eliacarrara/videopypeline/actions/workflows/python-app.yml/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/videopypeline/badge/?version=latest)](https://videopypeline.readthedocs.io/en/latest/?badge=latest)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A fancy wrapper for [opencv](https://opencv.org/) inspired by the [keras model API](https://keras.io/api/models/model/).
 

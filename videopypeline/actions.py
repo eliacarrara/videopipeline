@@ -1,3 +1,6 @@
+""" This module contains all actions in the videopypeline package.
+"""
+
 import cv2
 import numpy as np
 
@@ -42,7 +45,7 @@ class WriteVideoFile2(core.Action):
     def write(self, frames):
         frames = frames[0] if isinstance(frames, tuple) else frames
         assert isinstance(frames, list)
-        assert all(type(frame) == np.ndarray for frame in frames)
+        assert all(isinstance(frame, np.ndarray) for frame in frames)
         if len(frames) == 0:
             return
 
