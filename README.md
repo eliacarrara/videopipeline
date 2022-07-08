@@ -1,6 +1,6 @@
 # Videopypeline
 
-![example workflow](https://github.com/eliacarrara/videopypeline/actions/workflows/python-app.yml/badge.svg)
+![Testing](https://github.com/eliacarrara/videopypeline/actions/workflows/pytest.yml/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/videopypeline/badge/?version=latest)](https://videopypeline.readthedocs.io/en/latest/?badge=latest)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
