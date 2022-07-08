@@ -53,9 +53,16 @@ documentation = "https://videopypeline.readthedocs.io/en/latest/"
 [tool.setuptools.dynamic]
 version = {attr = "videopypeline.__version__"}
 
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["videopypeline"]
 
+
 [project.optional-dependencies]
-rest = ["docutils>=0.3"]
+rest = ["Sphinx"]
+
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]

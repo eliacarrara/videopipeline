@@ -4,8 +4,7 @@ import numpy as np
 from videopypeline import core
 
 
-class VideoWriter(core.Action):
-
+class WriteVideoFile(core.Action):
     def __init__(self, output_path, fps, **kwargs):
         super().__init__(self.write, **kwargs)
         self.output_path = output_path
@@ -28,14 +27,13 @@ class VideoWriter(core.Action):
 
         if self.writer is None:
             shape = tuple(reversed(frame.shape[:2]))
-            fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+            fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
             self.writer = cv2.VideoWriter(self.output_path, fourcc, self.fps, shape)
 
         self.writer.write(frame.astype(np.uint8))
 
 
-class VideoWriter2(core.Action):
-
+class WriteVideoFile2(core.Action):
     def __init__(self, output_path, fps):
         super().__init__(self.write)
         self.output_path = output_path
@@ -49,7 +47,7 @@ class VideoWriter2(core.Action):
             return
 
         shape = list(reversed(frames[0].shape[:2]))
-        writer = cv2.VideoWriter(self.output_path, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), self.fps, shape)
+        writer = cv2.VideoWriter(self.output_path, cv2.VideoWriter_fourcc("m", "p", "4", "v"), self.fps, shape)
 
         for frame in frames:
             writer.write(frame.astype(np.uint8))

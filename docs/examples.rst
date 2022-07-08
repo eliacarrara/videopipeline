@@ -21,7 +21,7 @@ Linear pipeline
         "Rgb2Greyscale" -> "Crop"
         "Crop" -> "Smooth"
         "Smooth" -> "Print"
-        "Print" -> "VideoWriter"
+        "Print" -> "WriteVideoFile"
     }
 
 .. code-block:: python
@@ -37,7 +37,7 @@ Linear pipeline
     crop = videopypeline.functions.Crop((100, 200), (500, 500))(grey)
     smooth1 = videopypeline.functions.Smooth(101)(crop)
     stats = videopypeline.core.Action(lambda frame: print(frame.mean(), frame.std()))(smooth1)
-    writer = videopypeline.actions.VideoWriter(output_path, 30, aggregate=True, collect=False, verbose=True)(stats)
+    writer = videopypeline.actions.WriteVideoFile(output_path, 30, aggregate=True, collect=False, verbose=True)(stats)
 
     # Invoke pipeline
     _ = writer()
@@ -59,7 +59,7 @@ Tree pipeline
         "Smooth1" -> "ImageDiff"
         "Smooth2" -> "ImageDiff"
 
-        "ImageDiff" -> "VideoWriter"
+        "ImageDiff" -> "WriteVideoFile"
     }
 
 .. code-block:: python
@@ -81,7 +81,7 @@ Tree pipeline
 
     # This node has two parents
     diff = videopypeline.core.Function(lambda *frames: frames[0] - frames[1])([smooth1, smooth2])
-    writer = videopypeline.actions.VideoWriter(output_path, 30, aggregate=True, collect=False, verbose=True)(diff)
+    writer = videopypeline.actions.WriteVideoFile(output_path, 30, aggregate=True, collect=False, verbose=True)(diff)
 
     # Invoke pipeline
     _ = writer()

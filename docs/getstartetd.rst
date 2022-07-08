@@ -27,7 +27,7 @@ A node is simply wrapper for a python function. This allows the function to be u
 A node allows to link other nodes and create a dependency. By linking node A to node B, node A becomes the previous node
 to node B. When called, node A will now forward its output to node B which takes it as input.
 
-.. literalinclude:: code_snippets/node.py
+.. literalinclude:: _static/node.py
     :language: python
     :linenos:
 

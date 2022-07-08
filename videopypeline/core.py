@@ -13,11 +13,10 @@ import numpy as np
 
 
 class AbortPipeline(Exception):
-    """ Exception used to interrupt the pipeline execution.
+    """Exception used to interrupt the pipeline execution.
 
     See in :py:class:`Function` for more information.
     """
-    pass
 
 
 class AbstractNode:
@@ -40,23 +39,42 @@ class AbstractNode:
     :type timeit: bool, optional
     """
 
-    def __init__(self, process_fn: typing.Callable, name: str = "", verbose: bool = False, debug_verbose: bool = False,
-                 aggregate: bool = False, collect: bool = True, timeit: bool = False):
+    def __init__(self, process_fn: typing.Callable, name: str = "", aggregate: bool = False, collect: bool = True,
+                 verbose: bool = False, debug_verbose: bool = False, timeit: bool = False):
         assert callable(process_fn)
-        self.previous: typing.List[AbstractNode] = []  #: The previous linked nodes
-        self.process_fn: typing.Callable = process_fn  #: The wrapped callable
-        self.cache_data = None  #: The cached output of this node
-        self.time_data = []  #: The collected timer data
+        #: The previous linked nodes
+        self.previous: typing.List[AbstractNode] = []
 
-        self.name: str = name  #: The name of the node
-        self.verbose: bool = bool(verbose)  #: If true, console output is more verbose
-        self.debug_verbose: bool = bool(debug_verbose)  #: If true, debug information will be printed
-        self.aggregate: bool = bool(aggregate)  #: If true, :py:meth:`__call__` invokes :py:meth:`invoke` until the generator exhausts, otherwise only once
-        self.collect: bool = bool(collect)  #: Applicable if :py:attr:`aggregate` is true. If true, the outputs will be collected into a list, otherwise discared
-        self.timeit: bool = bool(timeit)  #: If true, the execution time is timed.
+        #: The wrapped callable
+        self.process_fn: typing.Callable = process_fn
+
+        #: The cached output of this node
+        self.cache_data = None
+
+        #: The collected timer data
+        self.time_data = []
+
+        #: The name of the node
+        self.name: str = name
+
+        #: If true, console output is more verbose
+        self.verbose: bool = bool(verbose)
+
+        #: If true, debug information will be printed
+        self.debug_verbose: bool = bool(debug_verbose)
+
+        #: If true, :py:meth:`__call__` invokes :py:meth:`invoke` until the generator exhausts, otherwise only once
+        self.aggregate: bool = bool(aggregate)
+
+        #: If true, the outputs will be collected into a list, otherwise discarded.
+        #: Only applicable if :py:attr:`aggregate` is true.
+        self.collect: bool = bool(collect)
+
+        #: If true, the execution time is timed.
+        self.timeit: bool = bool(timeit)
 
     def __call__(self, *args):
-        """ Convenience wrapper for :py:meth:`model` and :py:meth:`infer`.
+        """Convenience wrapper for :py:meth:`model` and :py:meth:`infer`.
 
         **Modelling**
 
@@ -87,10 +105,10 @@ class AbstractNode:
         if is_modelling:  # model
             return self.model(args[0])
 
-        elif not is_modelling and not self.aggregate:  # infer once
+        if not is_modelling and not self.aggregate:  # infer once
             return self.infer()
 
-        elif not is_modelling and self.aggregate:  # infer until generator exhausts
+        if not is_modelling and self.aggregate:  # infer until generator exhausts
             collection, iteration, run = [], 0, True
 
             try:
@@ -115,9 +133,8 @@ class AbstractNode:
                     print("Interrupted...")
 
             return collection
-            
-        else:
-            assert False
+
+        assert False
 
     def __getitem__(self, n: int) -> AbstractNode:
         """
@@ -129,7 +146,7 @@ class AbstractNode:
         return AbstractNode(lambda *args: args[0][n], name=f"ArgSelect{n}")(self)
 
     def infer(self):
-        """ Infer
+        """Infer
 
         :return:
         """
@@ -144,8 +161,8 @@ class AbstractNode:
         previous_output = [prev.infer() for prev in self.previous]
 
         if self.debug_verbose:
-            size = previous_output.shape if isinstance(previous_output, np.ndarray) else ''
-            print(f'Input: {type(previous_output)}{size}')
+            size = previous_output.shape if isinstance(previous_output, np.ndarray) else ""
+            print(f"Input: {type(previous_output)}{size}")
 
         t0 = None
         if self.timeit:
@@ -159,8 +176,8 @@ class AbstractNode:
             self.time_data.append(t1 - t0)
 
         if self.debug_verbose:
-            size = self.cache_data.shape if isinstance(self.cache_data, np.ndarray) else ''
-            print(f'Output: {type(self.cache_data)}{size}')
+            size = self.cache_data.shape if isinstance(self.cache_data, np.ndarray) else ""
+            print(f"Output: {type(self.cache_data)}{size}")
 
         return self.cache_data
 
@@ -212,14 +229,12 @@ class AbstractNode:
 
         :return:
         """
-        pass
 
     def end_callback(self):
         """
 
         :return:
         """
-        pass
 
     @staticmethod
     def is_modelling(*args) -> bool:
@@ -238,7 +253,7 @@ class AbstractNode:
 
 
 class Function(AbstractNode):
-    """ A node which wraps a function.
+    """A node which wraps a function.
 
     This node type wraps a function ``process_fn`` and returns the output.
 
@@ -251,9 +266,7 @@ class Function(AbstractNode):
 
 
 class Generator(Function):
-    """
-
-    """
+    """ """
 
     def __init__(self, generator_fn: typing.Callable[[], typing.Generator], **kwargs):
         super().__init__(self.generate, **kwargs)
@@ -264,9 +277,7 @@ class Generator(Function):
 
 
 class Action(Function):
-    """
-
-    """
+    """ """
 
     def __init__(self, action_fn: typing.Callable, **kwargs):
         super().__init__(self.action, **kwargs)
@@ -278,7 +289,7 @@ class Action(Function):
 
 
 class Filter(Action):
-    """ A node which can conditional filter the pipeline execution.
+    """A node which can conditional filter the pipeline execution.
 
     This node can control whether a pipeline execution runs or halts. This behaviour is controlled with the output of
     the predicate :py:attr:`filter_fn`. The predicate is inferred every iteration.
@@ -297,9 +308,7 @@ class Filter(Action):
 
 
 class Pipeline(Function):
-    """
-
-    """
+    """ """
 
     def __init__(self, end_node: AbstractNode | typing.List[AbstractNode], **kwargs):
         super().__init__(self.pipeline, **kwargs)
@@ -319,20 +328,30 @@ class Pipeline(Function):
         self.previous = [end_node]
 
     def pipeline(self, *args):
+        """
+
+        :param args:
+        :return:
+        """
         self.end_node.start()
         ret = self.end_node(*args)
         self.end_node.end()
         return ret
 
     def render_model(self):
+        """Renders a diagram of the pipeline graph using graphviz.
+
+        :return: Returns the image of the diagram
+        """
+
         def get_name(n):
             def rnd_hex():
-                hex_chars = [c for c in "ABCDEF0123456789"]
-                return ''.join([random.choice(hex_chars) for _ in range(5)])
+                hex_chars = list("ABCDEF0123456789")
+                return "".join([random.choice(hex_chars) for _ in range(5)])
 
             return (n.__class__.__name__ if n.name == "" else n.name) + "-" + rnd_hex()
 
-        dot = graphviz.Digraph('pipeline' if self.name == "" else self.name, format='png')
+        dot = graphviz.Digraph("pipeline" if self.name == "" else self.name, format="png")
 
         graph = self.traverse_dfs(self.end_node)
         tr = {n: get_name(n) for n in graph.keys()}
@@ -360,7 +379,7 @@ class Pipeline(Function):
                 nodes[current] = []
 
                 # if previous is empty then current must be a generator
-                assert current.previous or isinstance(current, Generator) or isinstance(current, Pipeline)
+                assert current.previous or isinstance(current, (Generator, Pipeline))
 
                 for prev in current.previous:
                     stack.append(prev)

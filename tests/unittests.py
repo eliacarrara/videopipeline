@@ -6,7 +6,6 @@ import videopypeline
 
 
 class TestPipeline(unittest.TestCase):
-
     def test_linear(self):
         a1 = videopypeline.generators.Iteration(range(6))
         b1 = videopypeline.core.Function(lambda n: n * 3)(a1)
@@ -39,13 +38,13 @@ class TestPipeline(unittest.TestCase):
         a1 = videopypeline.generators.Iteration(range(70))  # First generator is intentionally larger than second one
         b1 = videopypeline.core.Function(lambda n: n * 3)(a1)
 
-        a2 = videopypeline.generators.Iteration(['0', '1', '2', '3', '4', '5'])
-        b2 = videopypeline.core.Function(lambda n: f' {n} ')(a2)
+        a2 = videopypeline.generators.Iteration(["0", "1", "2", "3", "4", "5"])
+        b2 = videopypeline.core.Function(lambda n: f" {n} ")(a2)
 
         c1 = videopypeline.core.Function(lambda *args: args, aggregate=True)([b1, b2])
 
         result = c1()
-        true = [(0, ' 0 '), (3, ' 1 '), (6, ' 2 '), (9, ' 3 '), (12, ' 4 '), (15, ' 5 ')]
+        true = [(0, " 0 "), (3, " 1 "), (6, " 2 "), (9, " 3 "), (12, " 4 "), (15, " 5 ")]
 
         self.assertEqual(len(true), len(result))
         for t, p in zip(true, result):
@@ -73,16 +72,16 @@ class TestPipeline(unittest.TestCase):
         tmp_b = []
 
         a1 = videopypeline.generators.Iteration(range(5))
-        b1 = videopypeline.core.Function(lambda n: (n, chr(ord('a') + n)))(a1)
+        b1 = videopypeline.core.Function(lambda n: (n, chr(ord("a") + n)))(a1)
         c1 = videopypeline.core.Action(tmp_a.append)(b1[0])
         c2 = videopypeline.core.Action(tmp_b.append)(b1[1])
         d1 = videopypeline.core.Action(lambda *a: None, aggregate=True)([c1, c2])
         result = d1()
 
         self.assertListEqual(list(range(5)), tmp_a)
-        self.assertListEqual(['a', 'b', 'c', 'd', 'e'], tmp_b)
+        self.assertListEqual(["a", "b", "c", "d", "e"], tmp_b)
 
-        true = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'd'), (4, 'e')]
+        true = [(0, "a"), (1, "b"), (2, "c"), (3, "d"), (4, "e")]
         self.assertEqual(len(true), len(result))
         for t, p in zip(true, result):
             self.assertTupleEqual(t, p)
@@ -93,8 +92,8 @@ class TestPipeline(unittest.TestCase):
         b1 = videopypeline.core.Function(lambda *a: chr(a[0]), aggregate=True, collect=True)([a1, a2])
         result = b1()
 
-        self.assertEqual('*' * 10, ''.join(result))
+        self.assertEqual("*" * 10, "".join(result))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

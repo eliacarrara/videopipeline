@@ -28,7 +28,7 @@ def crop(frame, position, size):
     assert _check_nparray(frame)
     assert _check_tuple(position)
     assert _check_tuple(size)
-    return frame[position[0]:position[0]+size[0], position[1]:position[1]+size[1]]
+    return frame[position[0] : position[0] + size[0], position[1] : position[1] + size[1]]
 
 
 def affine_transformation(frame, pos_d=None, rot_d=None, scale_d=None):
@@ -137,7 +137,7 @@ def draw_contour_centers(frame, center):
 def draw_text(frame, text, org=(100, 100), scale=3, color=(255, 0, 255), thickness=3):
     assert _check_nparray(frame)
     font = cv2.FONT_HERSHEY_SIMPLEX
-    return cv2.putText(np.array(frame), f'{text}', org, font, scale, color, thickness, cv2.LINE_AA)
+    return cv2.putText(np.array(frame), f"{text}", org, font, scale, color, thickness, cv2.LINE_AA)
 
 
 def draw_line(frame, start_pos, end_pos, color, thickness=3):
@@ -210,7 +210,7 @@ def stack(rows, cols, *images):
             if idx < len(images):
                 img = images[idx]
                 sub_img = img if img.ndim == 3 else np.dstack([img, img, img])
-                out_image[i * ref[0]: (i+1) * ref[0], j * ref[1]: (j+1) * ref[1]] = sub_img
+                out_image[i * ref[0] : (i + 1) * ref[0], j * ref[1] : (j + 1) * ref[1]] = sub_img
 
     return out_image
 
@@ -277,7 +277,10 @@ class DrawContourCenters(core.Function):
 
 class DrawText(core.Function):
     def __init__(self, org=(100, 100), scale=3, color=(255, 0, 255), thickness=3, **kwargs):
-        super().__init__(lambda frame, text: draw_text(frame, f'{text}', org=org, scale=scale, color=color, thickness=thickness), **kwargs)
+        super().__init__(
+            lambda frame, text: draw_text(frame, f"{text}", org=org, scale=scale, color=color, thickness=thickness),
+            **kwargs,
+        )
 
 
 class DrawMovementPath(core.Function):
@@ -319,13 +322,13 @@ class Threshold(core.Function):
 
 class Erode(core.Function):
     def __init__(self, window_size: int, **kwargs):
-        kernel = np.ones((window_size, window_size), 'uint8')
+        kernel = np.ones((window_size, window_size), "uint8")
         super().__init__(lambda frame: erode(frame, kernel), **kwargs)
 
 
 class Dilate(core.Function):
     def __init__(self, window_size: int, **kwargs):
-        kernel = np.ones((window_size, window_size), 'uint8')
+        kernel = np.ones((window_size, window_size), "uint8")
         super().__init__(lambda frame: dilate(frame, kernel), **kwargs)
 
 
