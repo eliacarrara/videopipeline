@@ -126,15 +126,15 @@ class AbstractNode:
                             print(f"Aggregating {iteration}")
 
                         output = self.infer()
-                        self.clear_cache()
 
                         if self.collect:
                             collection.append(output)
                     except AbortPipeline:
-                        self.clear_cache()
+                        pass
                     except StopIteration:
                         run = False
 
+                    self.clear_cache()
                     iteration += 1
             except KeyboardInterrupt:
                 if self.verbose:
